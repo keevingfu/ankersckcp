@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anker Soundcore KCP企业操作系统架构图</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.8s ease;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .nav-tab {
+            padding: 12px 30px;
+            background: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            color: #333;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .nav-tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .diagram-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .diagram-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .diagram-description {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .feature-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-card li {
+            padding: 5px 0;
+            color: #555;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .feature-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .legend {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .nav-tab {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+            
+            .diagram-container {
+                padding: 20px;
+            }
+            
+            .diagram-title {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎧 Anker Soundcore KCP企业操作系统</h1>
+            <p>Knowledge Control Plane - 知识驱动型全触点操作系统架构全景</p>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection('overview')">系统总览</button>
+            <button class="nav-tab" onclick="showSection('architecture')">技术架构</button>
+            <button class="nav-tab" onclick="showSection('modules')">功能模块</button>
+            <button class="nav-tab" onclick="showSection('business')">业务流程</button>
+            <button class="nav-tab" onclick="showSection('data')">数据流程</button>
+            <button class="nav-tab" onclick="showSection('deployment')">部署架构</button>
+        </div>
+        
+        <!-- 系统总览 -->
+        <div id="overview" class="content-section active">
+            <div class="diagram-container">
+                <h2 class="diagram-title">🏗️ KCP系统整体架构</h2>
+                <p class="diagram-description">
+                    KCP系统采用三层架构设计，通过知识中枢连接全触点业务场景，实现AI驱动的智能化运营。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "应用层 Application Layer"
+                            A1[官网搜索<br/>Website Search]
+                            A2[智能客服<br/>AI Support]
+                            A3[内容生成<br/>Content Gen]
+                            A4[EDM营销<br/>Email Marketing]
+                            A5[SEO/GEO<br/>Search Optimization]
+                            A6[社交媒体<br/>Social Media]
+                        end
+                        
+                        subgraph "知识层 Knowledge Layer"
+                            K1[向量索引<br/>Vector Index]
+                            K2[知识图谱<br/>Knowledge Graph]
+                            K3[RAG引擎<br/>RAG Engine]
+                            K4[主题聚类<br/>Topic Clustering]
+                            K5[语义关联<br/>Semantic Relations]
+                        end
+                        
+                        subgraph "数据层 Data Layer"
+                            D1[FAQ库<br/>FAQ Database]
+                            D2[产品文档<br/>Product Docs]
+                            D3[用户反馈<br/>User Feedback]
+                            D4[竞品数据<br/>Competitor Data]
+                            D5[营销内容<br/>Marketing Content]
+                            D6[视频脚本<br/>Video Scripts]
+                        end
+                        
+                        A1 & A2 & A3 & A4 & A5 & A6 --> K3
+                        K3 --> K1 & K2 & K4 & K5
+                        K1 & K2 & K4 & K5 --> D1 & D2 & D3 & D4 & D5 & D6
+                        
+                        style A1 fill:#e1f5fe
+                        style A2 fill:#e1f5fe
+                        style A3 fill:#e1f5fe
+                        style A4 fill:#e1f5fe
+                        style A5 fill:#e1f5fe
+                        style A6 fill:#e1f5fe
+                        style K1 fill:#f3e5f5
+                        style K2 fill:#f3e5f5
+                        style K3 fill:#f3e5f5
+                        style K4 fill:#f3e5f5
+                        style K5 fill:#f3e5f5
+                        style D1 fill:#e8f5e9
+                        style D2 fill:#e8f5e9
+                        style D3 fill:#e8f5e9
+                        style D4 fill:#e8f5e9
+                        style D5 fill:#e8f5e9
+                        style D6 fill:#e8f5e9
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-title">架构层级说明</div>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #e1f5fe;"></div>
+                            <span>应用层 - 面向用户的业务应用</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f3e5f5;"></div>
+                            <span>知识层 - 智能处理引擎</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #e8f5e9;"></div>
+                            <span>数据层 - 多源知识聚合</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🎯 AIPL用户运营模型</h2>
+                <p class="diagram-description">
+                    基于AIPL（Awareness-Interest-Purchase-Loyalty）模型，KCP系统在每个阶段提供智能化支持。
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph "A - 认知 Awareness"
+                            A1[SEO内容矩阵]
+                            A2[YouTube视频]
+                            A3[Reddit问答]
+                        end
+                        
+                        subgraph "I - 兴趣 Interest"
+                            I1[个性化EDM]
+                            I2[产品对比]
+                            I3[白皮书下载]
+                        end
+                        
+                        subgraph "P - 购买 Purchase"
+                            P1[智能推荐]
+                            P2[购买指南]
+                            P3[优惠信息]
+                        end
+                        
+                        subgraph "L - 忠诚 Loyalty"
+                            L1[智能客服]
+                            L2[用户社区]
+                            L3[产品升级]
+                        end
+                        
+                        A1 & A2 & A3 -->|知识驱动| I1 & I2 & I3
+                        I1 & I2 & I3 -->|转化优化| P1 & P2 & P3
+                        P1 & P2 & P3 -->|服务提升| L1 & L2 & L3
+                        L1 & L2 & L3 -.->|循环营销| A1 & A2 & A3
+                        
+                        style A1 fill:#ffebee
+                        style A2 fill:#ffebee
+                        style A3 fill:#ffebee
+                        style I1 fill:#fff3e0
+                        style I2 fill:#fff3e0
+                        style I3 fill:#fff3e0
+                        style P1 fill:#e8f5e9
+                        style P2 fill:#e8f5e9
+                        style P3 fill:#e8f5e9
+                        style L1 fill:#e3f2fd
+                        style L2 fill:#e3f2fd
+                        style L3 fill:#e3f2fd
+                </div>
+            </div>
+        </div>
+        
+        <!-- 技术架构 -->
+        <div id="architecture" class="content-section">
+            <div class="diagram-container">
+                <h2 class="diagram-title">🔧 微服务技术架构</h2>
+                <p class="diagram-description">
+                    系统采用微服务架构，通过API网关统一管理，各服务独立部署和扩展。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "前端层 Frontend"
+                            F1[Web Portal<br/>Next.js 14]
+                            F2[Admin Dashboard<br/>Ant Design Pro]
+                            F3[Mobile App<br/>React Native]
+                            F4[Chrome Extension<br/>Manifest V3]
+                        end
+                        
+                        subgraph "API网关 Gateway"
+                            G1[Kong Gateway / AWS API Gateway<br/>认证授权 · 限流 · 路由]
+                        end
+                        
+                        subgraph "微服务层 Microservices"
+                            M1[知识服务<br/>Knowledge Service<br/>:8001]
+                            M2[内容服务<br/>Content Service<br/>:8002]
+                            M3[客服服务<br/>Support Service<br/>:8003]
+                            M4[分析服务<br/>Analytics Service<br/>:8004]
+                            M5[认证服务<br/>Auth Service<br/>:8005]
+                            M6[调度服务<br/>Scheduler Service<br/>:8006]
+                        end
+                        
+                        subgraph "中间件 Middleware"
+                            MW1[Kafka<br/>消息队列]
+                            MW2[Redis<br/>缓存]
+                            MW3[Elasticsearch<br/>搜索引擎]
+                            MW4[Prometheus<br/>监控]
+                        end
+                        
+                        subgraph "数据存储 Storage"
+                            DB1[PostgreSQL<br/>关系数据]
+                            DB2[MongoDB<br/>文档数据]
+                            DB3[Pinecone<br/>向量数据]
+                            DB4[Neo4j<br/>图数据]
+                        end
+                        
+                        F1 & F2 & F3 & F4 --> G1
+                        G1 --> M1 & M2 & M3 & M4 & M5 & M6
+                        M1 & M2 & M3 & M4 & M5 & M6 <--> MW1 & MW2 & MW3 & MW4
+                        M1 & M2 & M3 & M4 --> DB1 & DB2 & DB3 & DB4
+                        
+                        style F1 fill:#e3f2fd
+                        style F2 fill:#e3f2fd
+                        style F3 fill:#e3f2fd
+                        style F4 fill:#e3f2fd
+                        style G1 fill:#fff3e0
+                        style M1 fill:#f3e5f5
+                        style M2 fill:#f3e5f5
+                        style M3 fill:#f3e5f5
+                        style M4 fill:#f3e5f5
+                        style M5 fill:#f3e5f5
+                        style M6 fill:#f3e5f5
+                        style MW1 fill:#ffebee
+                        style MW2 fill:#ffebee
+                        style MW3 fill:#ffebee
+                        style MW4 fill:#ffebee
+                        style DB1 fill:#e8f5e9
+                        style DB2 fill:#e8f5e9
+                        style DB3 fill:#e8f5e9
+                        style DB4 fill:#e8f5e9
+                </div>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🔌 技术栈选型</h3>
+                        <ul>
+                            <li>前端框架: Next.js 14 + React</li>
+                            <li>后端语言: Python 3.11 + FastAPI</li>
+                            <li>AI引擎: GPT-4 + Claude 3.5</li>
+                            <li>向量库: Pinecone</li>
+                            <li>图数据库: Neo4j</li>
+                            <li>容器化: Docker + K8s</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h3>⚡ 性能指标</h3>
+                        <ul>
+                            <li>API响应: <100ms</li>
+                            <li>并发能力: 10000 QPS</li>
+                            <li>系统可用性: 99.9% SLA</li>
+                            <li>内容生成: 5-10秒/篇</li>
+                            <li>知识检索: <500ms</li>
+                            <li>自动扩展: 支持10x增长</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔒 安全架构</h3>
+                        <ul>
+                            <li>端到端加密传输</li>
+                            <li>JWT认证 + OAuth2.0</li>
+                            <li>RBAC权限控制</li>
+                            <li>数据脱敏处理</li>
+                            <li>审计日志记录</li>
+                            <li>DDoS防护</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 功能模块 -->
+        <div id="modules" class="content-section">
+            <div class="diagram-container">
+                <h2 class="diagram-title">📦 核心功能模块拆解</h2>
+                <p class="diagram-description">
+                    系统包含六大核心功能模块，每个模块都有完整的子功能体系。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "知识管理模块"
+                            KM1[知识采集]
+                            KM2[知识结构化]
+                            KM3[知识检索]
+                            KM4[知识更新]
+                            KM5[质量管理]
+                            KM1 --> KM2 --> KM3
+                            KM4 --> KM5
+                        end
+                        
+                        subgraph "内容生成模块"
+                            CG1[SEO文章]
+                            CG2[营销邮件]
+                            CG3[社交内容]
+                            CG4[产品文案]
+                            CG5[视频脚本]
+                            CG1 & CG2 & CG3 --> CG4 & CG5
+                        end
+                        
+                        subgraph "智能客服模块"
+                            CS1[意图识别]
+                            CS2[对话管理]
+                            CS3[知识匹配]
+                            CS4[情感分析]
+                            CS5[人工接管]
+                            CS1 --> CS2 --> CS3
+                            CS4 --> CS5
+                        end
+                        
+                        subgraph "数据分析模块"
+                            DA1[内容效果]
+                            DA2[客服分析]
+                            DA3[用户行为]
+                            DA4[ROI计算]
+                            DA5[报表生成]
+                            DA1 & DA2 & DA3 --> DA4 --> DA5
+                        end
+                        
+                        style KM1 fill:#e8f5e9
+                        style KM2 fill:#e8f5e9
+                        style KM3 fill:#e8f5e9
+                        style KM4 fill:#e8f5e9
+                        style KM5 fill:#e8f5e9
+                        style CG1 fill:#fff3e0
+                        style CG2 fill:#fff3e0
+                        style CG3 fill:#fff3e0
+                        style CG4 fill:#fff3e0
+                        style CG5 fill:#fff3e0
+                        style CS1 fill:#e3f2fd
+                        style CS2 fill:#e3f2fd
+                        style CS3 fill:#e3f2fd
+                        style CS4 fill:#e3f2fd
+                        style CS5 fill:#e3f2fd
+                        style DA1 fill:#fce4ec
+                        style DA2 fill:#fce4ec
+                        style DA3 fill:#fce4ec
+                        style DA4 fill:#fce4ec
+                        style DA5 fill:#fce4ec
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🤖 RAG检索增强生成引擎</h2>
+                <p class="diagram-description">
+                    RAG引擎是系统的核心，通过混合检索策略提供精准的知识匹配。
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph "输入处理"
+                            I1[用户查询]
+                            I2[Query理解]
+                            I3[Query扩展]
+                        end
+                        
+                        subgraph "混合检索"
+                            R1[向量检索<br/>Semantic Search]
+                            R2[关键词检索<br/>Keyword Match]
+                            R3[图谱遍历<br/>Graph Traverse]
+                        end
+                        
+                        subgraph "结果融合"
+                            F1[相关性评分]
+                            F2[重排序算法]
+                            F3[Top-K选择]
+                        end
+                        
+                        subgraph "生成输出"
+                            O1[Prompt构建]
+                            O2[LLM生成]
+                            O3[答案优化]
+                        end
+                        
+                        I1 --> I2 --> I3
+                        I3 --> R1 & R2 & R3
+                        R1 & R2 & R3 --> F1
+                        F1 --> F2 --> F3
+                        F3 --> O1 --> O2 --> O3
+                        
+                        style I1 fill:#e1f5fe
+                        style I2 fill:#e1f5fe
+                        style I3 fill:#e1f5fe
+                        style R1 fill:#f3e5f5
+                        style R2 fill:#f3e5f5
+                        style R3 fill:#f3e5f5
+                        style F1 fill:#fff9c4
+                        style F2 fill:#fff9c4
+                        style F3 fill:#fff9c4
+                        style O1 fill:#e8f5e9
+                        style O2 fill:#e8f5e9
+                        style O3 fill:#e8f5e9
+                </div>
+            </div>
+        </div>
+        
+        <!-- 业务流程 -->
+        <div id="business" class="content-section">
+            <div class="diagram-container">
+                <h2 class="diagram-title">💼 内容生成业务流程</h2>
+                <p class="diagram-description">
+                    从需求输入到内容发布的完整业务流程，包括质量控制和效果追踪。
+                </p>
+                <div class="mermaid">
+                    graph TD
+                        Start([开始]) --> Input[输入需求参数]
+                        Input --> Type{选择内容类型}
+                        
+                        Type -->|SEO文章| SEO[SEO优化设置]
+                        Type -->|营销邮件| Email[邮件模板选择]
+                        Type -->|社交内容| Social[平台适配]
+                        
+                        SEO & Email & Social --> Knowledge[获取知识上下文]
+                        Knowledge --> Generate[AI内容生成]
+                        Generate --> Quality{质量检查}
+                        
+                        Quality -->|不合格| Optimize[人工优化]
+                        Optimize --> Quality
+                        Quality -->|合格| Preview[预览审核]
+                        
+                        Preview --> Publish{发布决策}
+                        Publish -->|立即发布| Direct[直接发布]
+                        Publish -->|定时发布| Schedule[加入发布队列]
+                        
+                        Direct & Schedule --> Monitor[效果监控]
+                        Monitor --> Analytics[数据分析]
+                        Analytics --> End([结束])
+                        
+                        style Start fill:#e8f5e9
+                        style End fill:#e8f5e9
+                        style Type fill:#fff3e0
+                        style Quality fill:#fff3e0
+                        style Publish fill:#fff3e0
+                        style Generate fill:#e1f5fe
+                        style Monitor fill:#f3e5f5
+                        style Analytics fill:#f3e5f5
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🎯 智能客服处理流程</h2>
+                <p class="diagram-description">
+                    智能客服的多轮对话处理流程，包含自动回复和人工接管机制。
+                </p>
+                <div class="mermaid">
+                    graph TD
+                        Start([用户发起对话]) --> Receive[接收消息]
+                        Receive --> Intent[意图识别]
+                        Intent --> Sentiment[情感分析]
+                        
+                        Sentiment --> Check{需要人工?}
+                        Check -->|是| Human[转人工客服]
+                        Check -->|否| Search[知识库检索]
+                        
+                        Search --> Match{找到答案?}
+                        Match -->|是| Generate[生成回复]
+                        Match -->|否| Clarify[请求澄清]
+                        
+                        Generate --> Send[发送回复]
+                        Clarify --> Wait[等待用户]
+                        Human --> Assign[分配客服]
+                        
+                        Send --> Feedback{用户满意?}
+                        Feedback -->|是| Close[结束对话]
+                        Feedback -->|否| Escalate[升级处理]
+                        
+                        Wait --> Receive
+                        Assign --> Handle[人工处理]
+                        Handle --> Close
+                        Escalate --> Human
+                        
+                        Close --> Update[更新知识库]
+                        Update --> End([结束])
+                        
+                        style Start fill:#e3f2fd
+                        style End fill:#e3f2fd
+                        style Check fill:#fff3e0
+                        style Match fill:#fff3e0
+                        style Feedback fill:#fff3e0
+                        style Human fill:#ffebee
+                        style Generate fill:#e8f5e9
+                        style Update fill:#f3e5f5
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">📊 知识更新维护流程</h2>
+                <p class="diagram-description">
+                    知识库的持续更新和质量维护流程，确保知识的准确性和时效性。
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph "知识来源"
+                            S1[产品更新]
+                            S2[用户反馈]
+                            S3[竞品监控]
+                            S4[市场动态]
+                        end
+                        
+                        subgraph "采集处理"
+                            C1[自动采集]
+                            C2[人工录入]
+                            C3[批量导入]
+                        end
+                        
+                        subgraph "质量控制"
+                            Q1[准确性验证]
+                            Q2[重复检查]
+                            Q3[时效性评估]
+                            Q4[相关性评分]
+                        end
+                        
+                        subgraph "知识入库"
+                            K1[结构化处理]
+                            K2[向量化存储]
+                            K3[图谱更新]
+                            K4[索引重建]
+                        end
+                        
+                        subgraph "效果追踪"
+                            T1[使用频率]
+                            T2[满意度]
+                            T3[准确率]
+                        end
+                        
+                        S1 & S2 & S3 & S4 --> C1 & C2 & C3
+                        C1 & C2 & C3 --> Q1 & Q2 & Q3 & Q4
+                        Q1 & Q2 & Q3 & Q4 --> K1
+                        K1 --> K2 & K3 & K4
+                        K2 & K3 & K4 --> T1 & T2 & T3
+                        T1 & T2 & T3 -.->|反馈优化| Q1
+                        
+                        style S1 fill:#e8f5e9
+                        style S2 fill:#e8f5e9
+                        style S3 fill:#e8f5e9
+                        style S4 fill:#e8f5e9
+                        style Q1 fill:#fff3e0
+                        style Q2 fill:#fff3e0
+                        style Q3 fill:#fff3e0
+                        style Q4 fill:#fff3e0
+                        style K1 fill:#e3f2fd
+                        style K2 fill:#e3f2fd
+                        style K3 fill:#e3f2fd
+                        style K4 fill:#e3f2fd
+                </div>
+            </div>
+        </div>
+        
+        <!-- 数据流程 -->
+        <div id="data" class="content-section">
+            <div class="diagram-container">
+                <h2 class="diagram-title">🔄 系统数据流转图</h2>
+                <p class="diagram-description">
+                    展示数据在系统各组件间的流转路径和处理过程。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "数据输入"
+                            DI1[Web爬虫<br/>FireCrawl]
+                            DI2[API接入<br/>Zapier/n8n]
+                            DI3[文件上传<br/>Excel/CSV]
+                            DI4[实时推送<br/>Webhook]
+                        end
+                        
+                        subgraph "数据处理"
+                            DP1[数据清洗<br/>去重/格式化]
+                            DP2[NLP处理<br/>分词/NER]
+                            DP3[向量化<br/>Embedding]
+                            DP4[关系提取<br/>Entity-Relation]
+                        end
+                        
+                        subgraph "数据存储"
+                            DS1[(PostgreSQL<br/>结构化数据)]
+                            DS2[(MongoDB<br/>文档数据)]
+                            DS3[(Pinecone<br/>向量索引)]
+                            DS4[(Neo4j<br/>知识图谱)]
+                        end
+                        
+                        subgraph "数据服务"
+                            SV1[REST API]
+                            SV2[GraphQL]
+                            SV3[WebSocket]
+                            SV4[gRPC]
+                        end
+                        
+                        subgraph "数据消费"
+                            DC1[前端应用]
+                            DC2[分析报表]
+                            DC3[第三方集成]
+                        end
+                        
+                        DI1 & DI2 & DI3 & DI4 --> DP1
+                        DP1 --> DP2 --> DP3 & DP4
+                        DP3 --> DS3
+                        DP4 --> DS4
+                        DP2 --> DS1 & DS2
+                        DS1 & DS2 & DS3 & DS4 --> SV1 & SV2 & SV3 & SV4
+                        SV1 & SV2 & SV3 & SV4 --> DC1 & DC2 & DC3
+                        
+                        style DI1 fill:#ffebee
+                        style DI2 fill:#ffebee
+                        style DI3 fill:#ffebee
+                        style DI4 fill:#ffebee
+                        style DP1 fill:#fff3e0
+                        style DP2 fill:#fff3e0
+                        style DP3 fill:#fff3e0
+                        style DP4 fill:#fff3e0
+                        style DS1 fill:#e8f5e9
+                        style DS2 fill:#e8f5e9
+                        style DS3 fill:#e8f5e9
+                        style DS4 fill:#e8f5e9
+                        style SV1 fill:#e3f2fd
+                        style SV2 fill:#e3f2fd
+                        style SV3 fill:#e3f2fd
+                        style SV4 fill:#e3f2fd
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🧮 知识向量化处理流程</h2>
+                <p class="diagram-description">
+                    知识内容从文本到向量的转换过程，实现语义搜索能力。
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph "文本预处理"
+                            T1[原始文本]
+                            T2[分块策略<br/>Chunking]
+                            T3[清洗标准化]
+                        end
+                        
+                        subgraph "向量生成"
+                            E1[选择模型<br/>text-embedding-3]
+                            E2[生成向量<br/>1536维]
+                            E3[质量评估]
+                        end
+                        
+                        subgraph "索引构建"
+                            I1[向量存储<br/>Pinecone]
+                            I2[元数据关联]
+                            I3[索引优化]
+                        end
+                        
+                        subgraph "检索服务"
+                            S1[Query向量化]
+                            S2[相似度计算]
+                            S3[结果排序]
+                        end
+                        
+                        T1 --> T2 --> T3
+                        T3 --> E1 --> E2 --> E3
+                        E3 --> I1 --> I2 --> I3
+                        I3 --> S1 --> S2 --> S3
+                        
+                        style T1 fill:#e8f5e9
+                        style T2 fill:#e8f5e9
+                        style T3 fill:#e8f5e9
+                        style E1 fill:#f3e5f5
+                        style E2 fill:#f3e5f5
+                        style E3 fill:#f3e5f5
+                        style I1 fill:#fff3e0
+                        style I2 fill:#fff3e0
+                        style I3 fill:#fff3e0
+                        style S1 fill:#e3f2fd
+                        style S2 fill:#e3f2fd
+                        style S3 fill:#e3f2fd
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🌐 知识图谱构建流程</h2>
+                <p class="diagram-description">
+                    Neo4j知识图谱的构建过程，建立实体间的关系网络。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "实体识别"
+                            E1[产品实体]
+                            E2[功能实体]
+                            E3[场景实体]
+                            E4[问题实体]
+                        end
+                        
+                        subgraph "关系抽取"
+                            R1[HAS_FEATURE]
+                            R2[SUITABLE_FOR]
+                            R3[COMPETES_WITH]
+                            R4[SOLVES_PROBLEM]
+                        end
+                        
+                        subgraph "图谱构建"
+                            G1[(Neo4j存储)]
+                            G2[Cypher查询]
+                            G3[图算法分析]
+                        end
+                        
+                        subgraph "应用场景"
+                            A1[产品推荐]
+                            A2[竞品分析]
+                            A3[问题诊断]
+                        end
+                        
+                        E1 & E2 & E3 & E4 --> R1 & R2 & R3 & R4
+                        R1 & R2 & R3 & R4 --> G1
+                        G1 --> G2 & G3
+                        G2 & G3 --> A1 & A2 & A3
+                        
+                        style E1 fill:#ffebee
+                        style E2 fill:#ffebee
+                        style E3 fill:#ffebee
+                        style E4 fill:#ffebee
+                        style R1 fill:#fff3e0
+                        style R2 fill:#fff3e0
+                        style R3 fill:#fff3e0
+                        style R4 fill:#fff3e0
+                        style G1 fill:#e8f5e9
+                        style G2 fill:#e8f5e9
+                        style G3 fill:#e8f5e9
+                        style A1 fill:#e3f2fd
+                        style A2 fill:#e3f2fd
+                        style A3 fill:#e3f2fd
+                </div>
+            </div>
+        </div>
+        
+        <!-- 部署架构 -->
+        <div id="deployment" class="content-section">
+            <div class="diagram-container">
+                <h2 class="diagram-title">☁️ 云原生部署架构</h2>
+                <p class="diagram-description">
+                    基于Kubernetes的容器化部署架构，支持自动扩缩容和高可用。
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "负载均衡层"
+                            LB[AWS ALB / CloudFlare]
+                        end
+                        
+                        subgraph "Kubernetes Cluster"
+                            subgraph "Ingress"
+                                IG[NGINX Ingress Controller]
+                            end
+                            
+                            subgraph "Services"
+                                SV1[knowledge-service<br/>3 Pods]
+                                SV2[content-service<br/>3 Pods]
+                                SV3[support-service<br/>3 Pods]
+                                SV4[analytics-service<br/>2 Pods]
+                            end
+                            
+                            subgraph "Jobs & CronJobs"
+                                JB1[数据同步Job]
+                                JB2[报表生成CronJob]
+                                JB3[备份任务CronJob]
+                            end
+                            
+                            subgraph "ConfigMaps & Secrets"
+                                CF[配置管理]
+                                SC[密钥管理]
+                            end
+                        end
+                        
+                        subgraph "外部服务"
+                            EX1[OpenAI API]
+                            EX2[Pinecone Cloud]
+                            EX3[MongoDB Atlas]
+                            EX4[AWS RDS]
+                        end
+                        
+                        subgraph "监控告警"
+                            MN1[Prometheus]
+                            MN2[Grafana]
+                            MN3[AlertManager]
+                        end
+                        
+                        LB --> IG
+                        IG --> SV1 & SV2 & SV3 & SV4
+                        SV1 & SV2 & SV3 & SV4 --> EX1 & EX2 & EX3 & EX4
+                        SV1 & SV2 & SV3 & SV4 --> CF & SC
+                        JB1 & JB2 & JB3 --> EX3 & EX4
+                        SV1 & SV2 & SV3 & SV4 -.->|metrics| MN1
+                        MN1 --> MN2 & MN3
+                        
+                        style LB fill:#fff3e0
+                        style IG fill:#e3f2fd
+                        style SV1 fill:#e8f5e9
+                        style SV2 fill:#e8f5e9
+                        style SV3 fill:#e8f5e9
+                        style SV4 fill:#e8f5e9
+                        style EX1 fill:#ffebee
+                        style EX2 fill:#ffebee
+                        style EX3 fill:#ffebee
+                        style EX4 fill:#ffebee
+                        style MN1 fill:#f3e5f5
+                        style MN2 fill:#f3e5f5
+                        style MN3 fill:#f3e5f5
+                </div>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🚀 部署策略</h3>
+                        <ul>
+                            <li>蓝绿部署: 零停机升级</li>
+                            <li>金丝雀发布: 渐进式推出</li>
+                            <li>自动回滚: 故障快速恢复</li>
+                            <li>水平扩展: HPA自动伸缩</li>
+                            <li>多区部署: 跨区域高可用</li>
+                            <li>灾备方案: 多活架构</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📊 监控指标</h3>
+                        <ul>
+                            <li>系统指标: CPU/内存/磁盘</li>
+                            <li>应用指标: QPS/延迟/错误率</li>
+                            <li>业务指标: 内容生成量/转化率</li>
+                            <li>日志聚合: ELK Stack</li>
+                            <li>链路追踪: Jaeger</li>
+                            <li>告警规则: 分级告警机制</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔧 运维工具</h3>
+                        <ul>
+                            <li>GitOps: ArgoCD</li>
+                            <li>密钥管理: Vault</li>
+                            <li>服务网格: Istio</li>
+                            <li>CI/CD: GitLab CI</li>
+                            <li>镜像仓库: Harbor</li>
+                            <li>备份恢复: Velero</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="diagram-container">
+                <h2 class="diagram-title">🔄 CI/CD流水线</h2>
+                <p class="diagram-description">
+                    自动化的持续集成和持续部署流程，确保代码质量和快速交付。
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph "开发阶段"
+                            D1[代码提交<br/>Git Push]
+                            D2[代码审查<br/>Code Review]
+                            D3[合并请求<br/>Merge Request]
+                        end
+                        
+                        subgraph "CI阶段"
+                            CI1[单元测试<br/>pytest]
+                            CI2[代码质量<br/>SonarQube]
+                            CI3[安全扫描<br/>Snyk]
+                            CI4[构建镜像<br/>Docker Build]
+                        end
+                        
+                        subgraph "CD阶段"
+                            CD1[推送镜像<br/>Registry]
+                            CD2[部署Staging<br/>K8s Apply]
+                            CD3[集成测试<br/>E2E Test]
+                            CD4[部署Production<br/>Blue-Green]
+                        end
+                        
+                        subgraph "监控阶段"
+                            M1[性能监控]
+                            M2[错误追踪]
+                            M3[用户反馈]
+                        end
+                        
+                        D1 --> D2 --> D3
+                        D3 --> CI1 --> CI2 --> CI3 --> CI4
+                        CI4 --> CD1 --> CD2 --> CD3 --> CD4
+                        CD4 --> M1 & M2 & M3
+                        M1 & M2 & M3 -.->|反馈| D1
+                        
+                        style D1 fill:#e8f5e9
+                        style D2 fill:#e8f5e9
+                        style D3 fill:#e8f5e9
+                        style CI1 fill:#fff3e0
+                        style CI2 fill:#fff3e0
+                        style CI3 fill:#fff3e0
+                        style CI4 fill:#fff3e0
+                        style CD1 fill:#e3f2fd
+                        style CD2 fill:#e3f2fd
+                        style CD3 fill:#e3f2fd
+                        style CD4 fill:#e3f2fd
+                        style M1 fill:#f3e5f5
+                        style M2 fill:#f3e5f5
+                        style M3 fill:#f3e5f5
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 初始化Mermaid
+        mermaid.initialize({
+            startOnLoad: false,  // 改为false，手动控制渲染
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#7c3aed',
+                lineColor: '#5a67d8',
+                secondaryColor: '#f3e5f5',
+                tertiaryColor: '#e8f5e9',
+                background: '#fff',
+                mainBkg: '#667eea',
+                secondBkg: '#f3e5f5',
+                tertiaryBkg: '#e8f5e9'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        // 存储已渲染的section
+        const renderedSections = new Set();
+
+        // Tab切换功能
+        function showSection(sectionId) {
+            // 隐藏所有section
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // 显示选中的section
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.classList.add('active');
+
+                // 如果该section尚未渲染过，则渲染Mermaid图表
+                if (!renderedSections.has(sectionId)) {
+                    renderMermaidInSection(activeSection, sectionId);
+                }
+            }
+
+            // 更新tab状态
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 激活当前tab
+            event.target.classList.add('active');
+        }
+
+        // 渲染特定section中的Mermaid图表
+        async function renderMermaidInSection(section, sectionId) {
+            try {
+                const mermaidDivs = section.querySelectorAll('.mermaid');
+
+                for (let i = 0; i < mermaidDivs.length; i++) {
+                    const div = mermaidDivs[i];
+
+                    // 跳过已经渲染过的图表
+                    if (div.getAttribute('data-processed') === 'true') {
+                        continue;
+                    }
+
+                    // 获取原始Mermaid代码
+                    const graphDefinition = div.textContent.trim();
+
+                    // 生成唯一ID
+                    const id = `mermaid-${sectionId}-${i}`;
+
+                    // 使用Mermaid 10.x的新API渲染
+                    const { svg } = await mermaid.render(id, graphDefinition);
+
+                    // 替换内容
+                    div.innerHTML = svg;
+                    div.setAttribute('data-processed', 'true');
+                }
+
+                // 标记该section已渲染
+                renderedSections.add(sectionId);
+
+                console.log(`${sectionId} section 图表渲染完成`);
+            } catch (error) {
+                console.error(`渲染 ${sectionId} 图表时出错:`, error);
+            }
+        }
+
+        // 页面加载完成后初始化第一个tab的图表
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('KCP架构图加载完成');
+
+            // 渲染初始可见的section（overview）
+            const overviewSection = document.getElementById('overview');
+            if (overviewSection) {
+                await renderMermaidInSection(overviewSection, 'overview');
+            }
+        });
+    </script>
+</body>
+</html>
