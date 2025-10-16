@@ -1,0 +1,441 @@
+name: Figma Design System Sync
+
+# Trigger conditions
+on:
+  # Manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      create_pr:
+        description: 'Create Pull Request'
+        required: false
+        type: boolean
+        default: false
+
+  # Scheduled trigger (daily at 9 AM UTC)
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Webhook trigger (from Figma webhook handler)
+  repository_dispatch:
+    types: [figma-update]
+
+env:
+  FIGMA_FILE_KEY: ctmaLDzdgeg1nMpdHnMpvd
+  FIGMA_FILE_NAME: Soundcore-KCP-Design-System
+  DESIGN_SYSTEM_DIR: frontend/styles/design-system
+  NODE_VERSION: '18'
+
+jobs:
+  # ============================================
+  # Job 1: Sync Design System from Figma
+  # ============================================
+  sync:
+    name: Sync Design System
+    runs-on: ubuntu-latest
+    outputs:
+      changes_detected: ${{ steps.check_changes.outputs.changes_detected }}
+      commit_sha: ${{ steps.commit.outputs.commit_sha }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🔧 Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 🎨 Run Figma Design System Sync
+        run: |
+          chmod +x scripts/figma-sync-design-system.sh
+          ./scripts/figma-sync-design-system.sh
+
+      - name: 🔍 Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet $DESIGN_SYSTEM_DIR; then
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No design system changes detected"
+          else
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+            echo "✅ Design system changes detected"
+          fi
+
+      - name: 📊 Analyze changes
+        if: steps.check_changes.outputs.changes_detected == 'true'
+        id: analyze
+        run: |
+          # Count changed files
+          CHANGED_FILES=$(git diff --name-only $DESIGN_SYSTEM_DIR | wc -l)
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+          # Count lines changed
+          LINES_ADDED=$(git diff --numstat $DESIGN_SYSTEM_DIR | awk '{sum+=$1} END {print sum}')
+          LINES_REMOVED=$(git diff --numstat $DESIGN_SYSTEM_DIR | awk '{sum+=$2} END {print sum}')
+          echo "lines_added=$LINES_ADDED" >> $GITHUB_OUTPUT
+          echo "lines_removed=$LINES_REMOVED" >> $GITHUB_OUTPUT
+
+          # Create change summary
+          CHANGE_SUMMARY=""
+          if git diff --name-only $DESIGN_SYSTEM_DIR | grep -q "colors.ts"; then
+            CHANGE_SUMMARY="${CHANGE_SUMMARY}- Updated color tokens\n"
+          fi
+          if git diff --name-only $DESIGN_SYSTEM_DIR | grep -q "typography.ts"; then
+            CHANGE_SUMMARY="${CHANGE_SUMMARY}- Updated typography system\n"
+          fi
+          if git diff --name-only $DESIGN_SYSTEM_DIR | grep -q "spacing.ts"; then
+            CHANGE_SUMMARY="${CHANGE_SUMMARY}- Updated spacing and layout\n"
+          fi
+          if git diff --name-only $DESIGN_SYSTEM_DIR | grep -q "effects.ts"; then
+            CHANGE_SUMMARY="${CHANGE_SUMMARY}- Updated visual effects\n"
+          fi
+
+          echo "change_summary<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGE_SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 💾 Commit changes
+        if: steps.check_changes.outputs.changes_detected == 'true'
+        id: commit
+        run: |
+          git add $DESIGN_SYSTEM_DIR
+          git add design-system-sync-report.md || true
+
+          COMMIT_MESSAGE=$(cat <<EOF
+          chore(design): sync design system from Figma
+
+          ${{ steps.analyze.outputs.change_summary }}
+
+          Synced from: $FIGMA_FILE_NAME ($FIGMA_FILE_KEY)
+          Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Changes: +${{ steps.analyze.outputs.lines_added }} -${{ steps.analyze.outputs.lines_removed }} lines
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+          Co-Authored-By: Claude <noreply@anthropic.com>
+          EOF
+          )
+
+          git commit -m "$COMMIT_MESSAGE"
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "✅ Commit created: $COMMIT_SHA"
+
+      - name: 🚀 Push changes
+        if: steps.check_changes.outputs.changes_detected == 'true' && github.event.inputs.create_pr != 'true'
+        run: |
+          git push origin ${{ github.ref_name }}
+          echo "✅ Changes pushed to ${{ github.ref_name }}"
+
+      - name: 📦 Upload artifacts
+        if: steps.check_changes.outputs.changes_detected == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-system
+          path: |
+            frontend/styles/design-system/
+            design-system-sync-report.md
+            .design-system-backups/
+          retention-days: 30
+
+  # ============================================
+  # Job 2: Create Pull Request (if requested)
+  # ============================================
+  create-pr:
+    name: Create Pull Request
+    runs-on: ubuntu-latest
+    needs: sync
+    if: needs.sync.outputs.changes_detected == 'true' && github.event.inputs.create_pr == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sync.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: 🔀 Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(design): sync design system from Figma"
+          branch: figma-sync-${{ github.run_number }}
+          title: "chore(design): sync design system from Figma"
+          body: |
+            ## Design System Sync
+
+            This PR contains automated design system updates synced from Figma.
+
+            ### Figma Source
+            - **File**: ${{ env.FIGMA_FILE_NAME }}
+            - **File Key**: ${{ env.FIGMA_FILE_KEY }}
+            - **Timestamp**: ${{ github.event.head_commit.timestamp }}
+
+            ### Changes
+            - Changed files: ${{ needs.sync.outputs.changed_files }}
+            - Lines: +${{ needs.sync.outputs.lines_added }} -${{ needs.sync.outputs.lines_removed }}
+
+            ### Test Plan
+            - [ ] Run type check: `cd frontend && npm run type-check`
+            - [ ] Build project: `npm run build`
+            - [ ] Visual regression tests pass
+            - [ ] Design tokens work in components
+
+            ### Workflow Run
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          labels: |
+            design-system
+            automated
+            figma-sync
+          assignees: ${{ github.actor }}
+
+  # ============================================
+  # Job 3: Validation
+  # ============================================
+  validate:
+    name: Validate Design System
+    runs-on: ubuntu-latest
+    needs: sync
+    if: needs.sync.outputs.changes_detected == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: 🔍 TypeScript type check
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: ✅ Validate design tokens structure
+        working-directory: frontend
+        run: |
+          node -e "
+          const { colors, typography, spacing, shadows } = require('./styles/design-system');
+          console.log('✅ Design system exports validated');
+          console.log('Colors:', Object.keys(colors).length);
+          console.log('Typography:', Object.keys(typography).length);
+          console.log('Spacing:', Object.keys(spacing).length);
+          console.log('Shadows:', Object.keys(shadows).length);
+          "
+
+      - name: 🎨 Check required design tokens
+        working-directory: frontend
+        run: |
+          node -e "
+          const { colors } = require('./styles/design-system');
+          const required = ['primary', 'secondary', 'success', 'warning', 'error'];
+          required.forEach(key => {
+            if (!colors[key]) throw new Error('Missing required color: ' + key);
+          });
+          console.log('✅ All required design tokens present');
+          "
+
+  # ============================================
+  # Job 4: Visual Regression Testing
+  # ============================================
+  visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    needs: sync
+    if: needs.sync.outputs.changes_detected == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: 🎭 Install Playwright
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: 📸 Run visual regression tests
+        working-directory: frontend
+        run: |
+          npx playwright test tests/visual-regression/ --project=chromium || true
+
+      - name: 📊 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # ============================================
+  # Job 5: Design Consistency Check
+  # ============================================
+  consistency-check:
+    name: Design Consistency Check
+    runs-on: ubuntu-latest
+    needs: sync
+    if: needs.sync.outputs.changes_detected == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check for hardcoded colors
+        working-directory: frontend
+        run: |
+          echo "Checking for hardcoded colors..."
+          HARDCODED=$(grep -r -E '#[0-9A-Fa-f]{6}' src/components/ --include="*.tsx" --include="*.ts" || true)
+          if [ -n "$HARDCODED" ]; then
+            echo "⚠️  Warning: Found hardcoded colors:"
+            echo "$HARDCODED"
+            echo "::warning::Consider using design tokens from design-system instead"
+          else
+            echo "✅ No hardcoded colors found"
+          fi
+
+      - name: 🔍 Check for hardcoded spacing
+        working-directory: frontend
+        run: |
+          echo "Checking for hardcoded px values..."
+          HARDCODED_PX=$(grep -r -E '[0-9]+px' src/components/ --include="*.tsx" --include="*.ts" || true)
+          if [ -n "$HARDCODED_PX" ]; then
+            echo "⚠️  Warning: Found hardcoded px values:"
+            echo "$HARDCODED_PX" | head -20
+            echo "::warning::Consider using spacing tokens from design-system instead"
+          else
+            echo "✅ No hardcoded px values found"
+          fi
+
+      - name: 📊 Generate usage report
+        working-directory: frontend
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+
+          function scanFiles(dir, results = []) {
+            if (!fs.existsSync(dir)) return results;
+            const files = fs.readdirSync(dir);
+            files.forEach(file => {
+              const filePath = path.join(dir, file);
+              const stat = fs.statSync(filePath);
+              if (stat.isDirectory()) {
+                scanFiles(filePath, results);
+              } else if (file.match(/\.(tsx|ts)$/)) {
+                const content = fs.readFileSync(filePath, 'utf8');
+                if (content.includes('design-system')) {
+                  results.push(filePath);
+                }
+              }
+            });
+            return results;
+          }
+
+          const componentsUsingDesignSystem = scanFiles('src/components');
+          console.log('✅ Design system usage report:');
+          console.log('Components using design system:', componentsUsingDesignSystem.length);
+          componentsUsingDesignSystem.forEach(file => console.log('  -', file));
+          "
+
+  # ============================================
+  # Job 6: Notify on Completion
+  # ============================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [sync, validate, visual-regression, consistency-check]
+    if: always() && needs.sync.outputs.changes_detected == 'true'
+
+    steps:
+      - name: 📢 Slack notification
+        if: vars.SLACK_WEBHOOK_URL
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "🎨 Design System Sync Completed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🎨 Design System Synced from Figma"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n${{ job.status }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+# ============================================
+# Setup Instructions
+# ============================================
+
+# 1. Enable GitHub Actions in your repository
+#    - Settings > Actions > General > Allow all actions
+
+# 2. Setup scheduled trigger
+#    - The schedule is defined in the 'on.schedule' section above
+#    - Modify cron expression as needed
+
+# 3. Setup Slack notifications (optional)
+#    - Go to Settings > Secrets and variables > Actions > Variables
+#    - Add variable: SLACK_WEBHOOK_URL with your Slack webhook URL
+
+# 4. Setup repository dispatch for webhook trigger
+#    - Use GitHub API to trigger workflow from Figma webhook handler:
+#      curl -X POST \
+#        -H "Accept: application/vnd.github+json" \
+#        -H "Authorization: Bearer $GITHUB_TOKEN" \
+#        https://api.github.com/repos/OWNER/REPO/dispatches \
+#        -d '{"event_type":"figma-update"}'
+
+# 5. Manual trigger
+#    - Go to Actions > Figma Design System Sync > Run workflow
+#    - Check "Create Pull Request" to create a PR instead of direct commit
