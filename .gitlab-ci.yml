@@ -1,0 +1,12 @@
+# GitLab CI/CD Configuration
+# Project: Anker Soundcore KCP
+
+stages:
+  - sync
+  - validate
+  - test
+  - deploy
+
+# Figma Design System Sync
+include:
+  - local: '.gitlab-ci-figma-sync.yml'

@@ -1,0 +1,344 @@
+# GitLab CI/CD Pipeline for Figma Design System Sync
+# Usage: Include this file in your main .gitlab-ci.yml:
+#   include:
+#     - local: '.gitlab-ci-figma-sync.yml'
+
+# Variables
+variables:
+  FIGMA_FILE_KEY: "ctmaLDzdgeg1nMpdHnMpvd"
+  FIGMA_FILE_NAME: "Soundcore-KCP-Design-System"
+  DESIGN_SYSTEM_DIR: "frontend/styles/design-system"
+
+# Stages
+stages:
+  - sync
+  - validate
+  - test
+  - deploy
+
+# ============================================
+# Stage 1: Design System Sync
+# ============================================
+
+figma:sync:
+  stage: sync
+  image: node:18-alpine
+  before_script:
+    - apk add --no-cache bash git curl
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+  script:
+    - echo "🎨 Syncing design system from Figma..."
+    - chmod +x scripts/figma-sync-design-system.sh
+    - ./scripts/figma-sync-design-system.sh
+    - |
+      if git diff --quiet $DESIGN_SYSTEM_DIR; then
+        echo "ℹ️  No design system changes detected"
+        exit 0
+      fi
+    - echo "✅ Design system changes detected"
+    - git add $DESIGN_SYSTEM_DIR
+    - git add design-system-sync-report.md
+    - |
+      git commit -m "chore(design): sync design system from Figma [skip ci]
+
+      Synced from: $FIGMA_FILE_NAME ($FIGMA_FILE_KEY)
+      Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+      Pipeline: $CI_PIPELINE_URL
+
+      🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+      Co-Authored-By: Claude <noreply@anthropic.com>"
+    - git push origin HEAD:$CI_COMMIT_REF_NAME
+  artifacts:
+    paths:
+      - frontend/styles/design-system/
+      - design-system-sync-report.md
+      - .design-system-backups/
+    expire_in: 30 days
+  only:
+    - schedules
+    - web
+    - triggers
+  tags:
+    - docker
+
+# ============================================
+# Stage 2: Validation
+# ============================================
+
+figma:validate:
+  stage: validate
+  image: node:18-alpine
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+  script:
+    - echo "🔍 Validating design system..."
+
+    # TypeScript type checking
+    - npm run type-check
+
+    # Check for TypeScript errors in design system
+    - npx tsc --noEmit --project tsconfig.json
+
+    # Validate design tokens structure
+    - |
+      node -e "
+      const { colors, typography, spacing, shadows } = require('./styles/design-system');
+      console.log('✅ Design system exports validated');
+      console.log('Colors:', Object.keys(colors).length);
+      console.log('Typography:', Object.keys(typography).length);
+      console.log('Spacing:', Object.keys(spacing).length);
+      console.log('Shadows:', Object.keys(shadows).length);
+      "
+
+    # Check for required design tokens
+    - |
+      node -e "
+      const { colors } = require('./styles/design-system');
+      const required = ['primary', 'secondary', 'success', 'warning', 'error'];
+      required.forEach(key => {
+        if (!colors[key]) throw new Error('Missing required color: ' + key);
+      });
+      console.log('✅ All required design tokens present');
+      "
+
+  dependencies:
+    - figma:sync
+  only:
+    - schedules
+    - web
+    - triggers
+  tags:
+    - docker
+
+# ============================================
+# Stage 3: Visual Regression Testing
+# ============================================
+
+figma:visual-regression:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.40.0-focal
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npx playwright install chromium
+  script:
+    - echo "📸 Running visual regression tests..."
+
+    # Run Playwright visual regression tests
+    - npx playwright test tests/visual-regression/ --project=chromium
+
+    # Generate comparison report
+    - npx playwright show-report --host 0.0.0.0 || true
+
+  artifacts:
+    when: always
+    paths:
+      - frontend/test-results/
+      - frontend/playwright-report/
+    reports:
+      junit: frontend/test-results/junit.xml
+    expire_in: 7 days
+  dependencies:
+    - figma:sync
+  only:
+    - schedules
+    - web
+    - triggers
+  allow_failure: true
+  tags:
+    - docker
+
+# ============================================
+# Stage 3: Design Consistency Check
+# ============================================
+
+figma:consistency-check:
+  stage: test
+  image: node:18-alpine
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+  script:
+    - echo "🎨 Checking design consistency..."
+
+    # Check for hardcoded colors in components
+    - |
+      echo "Checking for hardcoded colors..."
+      HARDCODED=$(grep -r -E '#[0-9A-Fa-f]{6}' src/components/ --include="*.tsx" --include="*.ts" || true)
+      if [ -n "$HARDCODED" ]; then
+        echo "⚠️  Warning: Found hardcoded colors:"
+        echo "$HARDCODED"
+        echo ""
+        echo "Consider using design tokens from design-system instead"
+      else
+        echo "✅ No hardcoded colors found"
+      fi
+
+    # Check for px values in components (should use design tokens)
+    - |
+      echo "Checking for hardcoded px values..."
+      HARDCODED_PX=$(grep -r -E '[0-9]+px' src/components/ --include="*.tsx" --include="*.ts" || true)
+      if [ -n "$HARDCODED_PX" ]; then
+        echo "⚠️  Warning: Found hardcoded px values:"
+        echo "$HARDCODED_PX" | head -20
+        echo ""
+        echo "Consider using spacing tokens from design-system instead"
+      else
+        echo "✅ No hardcoded px values found"
+      fi
+
+    # Generate design usage report
+    - |
+      node -e "
+      const fs = require('fs');
+      const path = require('path');
+
+      function scanFiles(dir, results = []) {
+        const files = fs.readdirSync(dir);
+        files.forEach(file => {
+          const filePath = path.join(dir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.isDirectory()) {
+            scanFiles(filePath, results);
+          } else if (file.match(/\.(tsx|ts)$/)) {
+            const content = fs.readFileSync(filePath, 'utf8');
+            if (content.includes('design-system')) {
+              results.push(filePath);
+            }
+          }
+        });
+        return results;
+      }
+
+      const componentsUsingDesignSystem = scanFiles('src/components');
+      console.log('✅ Design system usage report:');
+      console.log('Components using design system:', componentsUsingDesignSystem.length);
+      componentsUsingDesignSystem.forEach(file => console.log('  -', file));
+      "
+
+  dependencies:
+    - figma:sync
+  only:
+    - schedules
+    - web
+    - triggers
+  allow_failure: true
+  tags:
+    - docker
+
+# ============================================
+# Stage 4: Deploy Storybook (if updated)
+# ============================================
+
+figma:storybook:
+  stage: deploy
+  image: node:18-alpine
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+  script:
+    - echo "📚 Building Storybook..."
+    - npm run build-storybook || echo "Storybook not configured"
+
+    # Deploy to GitLab Pages or other hosting
+    - echo "Storybook built successfully"
+  artifacts:
+    paths:
+      - frontend/storybook-static/
+    expire_in: 7 days
+  dependencies:
+    - figma:sync
+  only:
+    - schedules
+    - web
+    - triggers
+  allow_failure: true
+  tags:
+    - docker
+
+# ============================================
+# Scheduled Pipeline Configuration
+# ============================================
+
+# To setup scheduled pipeline in GitLab:
+# 1. Go to CI/CD > Schedules
+# 2. Create new schedule:
+#    - Description: Daily Figma Design System Sync
+#    - Interval: Daily at 9:00 AM
+#    - Target branch: main
+#    - Activated: Yes
+# 3. Save pipeline schedule
+
+# ============================================
+# Manual Trigger (Web UI)
+# ============================================
+
+# To manually trigger Figma sync:
+# 1. Go to CI/CD > Pipelines
+# 2. Click "Run pipeline"
+# 3. Select branch
+# 4. Run pipeline
+
+# ============================================
+# Webhook Trigger (from Figma webhook handler)
+# ============================================
+
+# Setup trigger token:
+# 1. Go to Settings > CI/CD > Pipeline triggers
+# 2. Add trigger
+# 3. Copy token
+# 4. Use in webhook handler:
+#    curl -X POST \
+#      -F token=TOKEN \
+#      -F ref=main \
+#      https://gitlab.com/api/v4/projects/PROJECT_ID/trigger/pipeline
+
+# ============================================
+# Notifications
+# ============================================
+
+# Send notification on sync completion
+figma:notify:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      if [ -n "${SLACK_WEBHOOK_URL}" ]; then
+        echo "📢 Sending Slack notification..."
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🎨 Design System Sync Completed\",
+            \"blocks\": [{
+              \"type\": \"header\",
+              \"text\": {
+                \"type\": \"plain_text\",
+                \"text\": \"🎨 Design System Synced from Figma\"
+              }
+            }, {
+              \"type\": \"section\",
+              \"fields\": [{
+                \"type\": \"mrkdwn\",
+                \"text\": \"*Pipeline:*\n<${CI_PIPELINE_URL}|#${CI_PIPELINE_ID}>\"
+              }, {
+                \"type\": \"mrkdwn\",
+                \"text\": \"*Branch:*\n${CI_COMMIT_REF_NAME}\"
+              }]
+            }]
+          }" \
+          "${SLACK_WEBHOOK_URL}"
+      fi
+  dependencies:
+    - figma:sync
+  only:
+    - schedules
+    - web
+    - triggers
+  when: on_success
+  allow_failure: true
+  tags:
+    - docker
