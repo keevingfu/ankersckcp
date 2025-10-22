@@ -1,0 +1,52 @@
+<svg width="400" height="120" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="120" fill="#ffffff"/>
+
+  <!-- Icon - Abstract Knowledge Graph -->
+  <g transform="translate(20, 20)">
+    <!-- Central Node -->
+    <circle cx="40" cy="40" r="12" fill="#0066FF" opacity="0.9"/>
+
+    <!-- Connected Nodes -->
+    <circle cx="70" cy="25" r="8" fill="#00D4FF" opacity="0.8"/>
+    <circle cx="70" cy="55" r="8" fill="#00D4FF" opacity="0.8"/>
+    <circle cx="20" cy="30" r="8" fill="#00D4FF" opacity="0.8"/>
+    <circle cx="20" cy="50" r="8" fill="#00D4FF" opacity="0.8"/>
+
+    <!-- Connection Lines -->
+    <line x1="40" y1="40" x2="70" y2="25" stroke="#0066FF" stroke-width="2" opacity="0.5"/>
+    <line x1="40" y1="40" x2="70" y2="55" stroke="#0066FF" stroke-width="2" opacity="0.5"/>
+    <line x1="40" y1="40" x2="20" y2="30" stroke="#0066FF" stroke-width="2" opacity="0.5"/>
+    <line x1="40" y1="40" x2="20" y2="50" stroke="#0066FF" stroke-width="2" opacity="0.5"/>
+
+    <!-- Outer Nodes -->
+    <circle cx="85" cy="15" r="6" fill="#FF6B00" opacity="0.7"/>
+    <circle cx="85" cy="65" r="6" fill="#FF6B00" opacity="0.7"/>
+    <circle cx="5" cy="20" r="6" fill="#FF6B00" opacity="0.7"/>
+    <circle cx="5" cy="60" r="6" fill="#FF6B00" opacity="0.7"/>
+
+    <!-- Connecting outer nodes -->
+    <line x1="70" y1="25" x2="85" y2="15" stroke="#00D4FF" stroke-width="1.5" opacity="0.4"/>
+    <line x1="70" y1="55" x2="85" y2="65" stroke="#00D4FF" stroke-width="1.5" opacity="0.4"/>
+    <line x1="20" y1="30" x2="5" y2="20" stroke="#00D4FF" stroke-width="1.5" opacity="0.4"/>
+    <line x1="20" y1="50" x2="5" y2="60" stroke="#00D4FF" stroke-width="1.5" opacity="0.4"/>
+  </g>
+
+  <!-- Text: Soundcore KCP -->
+  <g transform="translate(120, 30)">
+    <!-- Soundcore -->
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#1a1a1a">
+      Soundcore
+    </text>
+
+    <!-- KCP -->
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="900" fill="#0066FF">
+      KCP
+    </text>
+
+    <!-- Subtitle -->
+    <text x="0" y="70" font-family="Arial, sans-serif" font-size="12" font-weight="400" fill="#666666">
+      Knowledge Control Plane
+    </text>
+  </g>
+</svg>

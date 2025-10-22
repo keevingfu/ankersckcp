@@ -1,0 +1,16 @@
+# Screenshots Directory
+
+Add UI screenshots here following the guidelines in ..assets/README.md
+
+## Required Screenshots:
+- dashboard.png
+- knowledge-base.png
+- content-generator.png
+- chat-interface.png
+- analytics.png
+- knowledge-graph.png
+
+## Mobile Screenshots (in mobile/ subdirectory):
+- mobile-home.png
+- mobile-search.png
+- mobile-chat.png
