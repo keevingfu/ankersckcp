@@ -3,7 +3,7 @@
 <div align="center">
 
 ![KCP Logo](https://img.shields.io/badge/Soundcore-KCP-blue?style=for-the-badge)
-[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/keevingfu/ankersckcp/e2e-tests.yml?style=for-the-badge&label=E2E%20Tests)](https://github.com/keevingfu/ankersckcp/actions)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/leapunion/ankersckcp/e2e-tests.yml?style=for-the-badge&label=E2E%20Tests)](https://github.com/leapunion/ankersckcp/actions)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -240,7 +240,7 @@ Response
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/keevingfu/ankersckcp.git
+git clone https://github.com/leapunion/ankersckcp.git
 cd ankersckcp
 ```
 
@@ -1049,8 +1049,8 @@ SOFTWARE.
 ## 📞 Contact & Support
 
 - **Documentation**: https://docs.soundcore-kcp.com
-- **Issues**: https://github.com/keevingfu/ankersckcp/issues
-- **Discussions**: https://github.com/keevingfu/ankersckcp/discussions
+- **Issues**: https://github.com/leapunion/ankersckcp/issues
+- **Discussions**: https://github.com/leapunion/ankersckcp/discussions
 - **Email**: support@soundcore-kcp.com
 
 ---
@@ -1103,6 +1103,6 @@ SOFTWARE.
 
 ⭐ **Star us on GitHub** if you find this project useful!
 
-[🏠 Home](https://soundcore-kcp.com) • [📖 Docs](https://docs.soundcore-kcp.com) • [💬 Community](https://github.com/keevingfu/ankersckcp/discussions)
+[🏠 Home](https://soundcore-kcp.com) • [📖 Docs](https://docs.soundcore-kcp.com) • [💬 Community](https://github.com/leapunion/ankersckcp/discussions)
 
 </div>

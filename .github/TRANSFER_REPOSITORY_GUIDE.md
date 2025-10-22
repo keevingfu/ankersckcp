@@ -8,7 +8,7 @@
 
 在转移仓库之前，请确认：
 
-1. ✅ **您是仓库的所有者**（当前是 `keevingfu/ankersckcp`）
+1. ✅ **您是仓库的所有者**（当前是 `leapunion/ankersckcp`）
 2. ✅ **您是 `leapunion` Organizations 的成员**（且有仓库创建权限）
 3. ✅ **Organizations 允许从外部转移仓库**
 4. ✅ **所有重要更改已提交并推送**
@@ -23,7 +23,7 @@
 
 #### 步骤 1: 打开仓库设置
 
-1. 访问仓库页面：https://github.com/keevingfu/ankersckcp
+1. 访问仓库页面：https://github.com/leapunion/ankersckcp
 2. 点击 **Settings**（设置）标签页
 3. 滚动到页面底部，找到 **Danger Zone**（危险区域）
 
@@ -95,7 +95,7 @@ gh repo transfer leapunion --yes
 curl -X POST \
   -H "Authorization: token YOUR_GITHUB_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/keevingfu/ankersckcp/transfer \
+  https://api.github.com/repos/leapunion/ankersckcp/transfer \
   -d '{
     "new_owner":"leapunion",
     "team_ids":[]
@@ -112,7 +112,7 @@ curl -X POST \
 ### 自动更新的内容
 
 ✅ **GitHub 自动处理的重定向：**
-- 旧 URL：`https://github.com/keevingfu/ankersckcp`
+- 旧 URL：`https://github.com/leapunion/ankersckcp`
 - 新 URL：`https://github.com/leapunion/ankersckcp`
 - GitHub 会自动创建重定向（90天内有效）
 
@@ -172,7 +172,7 @@ git push origin main
 
 ```bash
 # 搜索需要更新的引用
-grep -r "keevingfu/ankersckcp" .github/workflows/
+grep -r "leapunion/ankersckcp" .github/workflows/
 
 # 批量替换
 find .github/workflows -type f -name "*.yml" -exec sed -i '' 's/keevingfu\/ankersckcp/leapunion\/ankersckcp/g' {} +
@@ -185,7 +185,7 @@ cd frontend
 
 # 更新 repository 字段
 # 编辑 package.json，将：
-# "repository": "github:keevingfu/ankersckcp"
+# "repository": "github:leapunion/ankersckcp"
 # 改为：
 # "repository": "github:leapunion/ankersckcp"
 
@@ -203,7 +203,7 @@ npm pkg set repository.url="git+https://github.com/leapunion/ankersckcp.git"
 
 ```bash
 # 批量搜索所有 Markdown 文件中的旧链接
-find . -name "*.md" -exec grep -l "keevingfu/ankersckcp" {} \;
+find . -name "*.md" -exec grep -l "leapunion/ankersckcp" {} \;
 
 # 批量替换（小心使用）
 find . -name "*.md" -exec sed -i '' 's/keevingfu\/ankersckcp/leapunion\/ankersckcp/g' {} +
@@ -215,7 +215,7 @@ find . -name "*.md" -exec sed -i '' 's/keevingfu\/ankersckcp/leapunion\/ankersck
 
 ```bash
 # 旧的
-git clone https://github.com/keevingfu/ankersckcp.git
+git clone https://github.com/leapunion/ankersckcp.git
 
 # 新的
 git clone https://github.com/leapunion/ankersckcp.git

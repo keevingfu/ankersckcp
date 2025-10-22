@@ -51,7 +51,7 @@ Before you begin, ensure you have:
 
 1. **Fork the Repository**
    ```bash
-   # Go to https://github.com/keevingfu/ankersckcp
+   # Go to https://github.com/leapunion/ankersckcp
    # Click "Fork" button in the top-right corner
    ```
 
@@ -63,7 +63,7 @@ Before you begin, ensure you have:
 
 3. **Add Upstream Remote**
    ```bash
-   git remote add upstream https://github.com/keevingfu/ankersckcp.git
+   git remote add upstream https://github.com/leapunion/ankersckcp.git
    git fetch upstream
    ```
 
