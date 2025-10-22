@@ -4,6 +4,8 @@ import React from 'react';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import KnowledgeCard from '@/components/business/KnowledgeCard';
+import { useKnowledgeStats, useKnowledgeItems } from '@/lib/swr';
+import type { KnowledgeItem } from '@/lib/api/types';
 
 // Stat Card Component
 interface StatCardProps {
@@ -38,11 +40,20 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon }
 };
 
 export default function DashboardPage() {
-  // Sample data
+  // Fetch knowledge stats using SWR
+  const { data: statsData, isLoading: statsLoading } = useKnowledgeStats();
+
+  // Fetch recent knowledge items using SWR
+  const { data: knowledgeData, isLoading: knowledgeLoading } = useKnowledgeItems({
+    page: 1,
+    page_size: 3,
+  });
+
+  // Convert stats data to card format
   const stats = [
     {
       title: 'Total Knowledge Items',
-      value: '2,847',
+      value: statsData?.total_items?.toLocaleString() || '-',
       change: '+12.5%',
       trend: 'up' as const,
       icon: (
@@ -52,8 +63,8 @@ export default function DashboardPage() {
       ),
     },
     {
-      title: 'Content Generated',
-      value: '342',
+      title: 'Published Items',
+      value: statsData?.published_items?.toLocaleString() || '-',
       change: '+8.3%',
       trend: 'up' as const,
       icon: (
@@ -63,8 +74,8 @@ export default function DashboardPage() {
       ),
     },
     {
-      title: 'Tickets Resolved',
-      value: '1,289',
+      title: 'Total Views',
+      value: statsData?.total_views?.toLocaleString() || '-',
       change: '+15.2%',
       trend: 'up' as const,
       icon: (
@@ -75,7 +86,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Avg Quality Score',
-      value: '87%',
+      value: statsData?.avg_quality_score ? `${Math.round(statsData.avg_quality_score)}%` : '-',
       change: '+3.1%',
       trend: 'up' as const,
       icon: (
@@ -86,74 +97,81 @@ export default function DashboardPage() {
     },
   ];
 
-  const recentKnowledge = [
-    {
-      id: '1',
-      title: 'How to pair Liberty 4 Pro with iOS devices',
-      content: 'Step-by-step guide for pairing Soundcore Liberty 4 Pro earbuds with iPhone and iPad. Includes troubleshooting tips for common connection issues.',
-      type: 'Guide' as const,
-      product: 'Liberty 4 Pro',
-      language: 'EN',
-      qualityScore: 92,
-      updatedAt: '2024-10-15',
-    },
-    {
-      id: '2',
-      title: 'Space A40 battery life specifications',
-      content: 'Complete technical specifications for Space A40 battery performance, including playtime, charging time, and power consumption details.',
-      type: 'Spec' as const,
-      product: 'Space A40',
-      language: 'EN',
-      qualityScore: 88,
-      updatedAt: '2024-10-14',
-    },
-    {
-      id: '3',
-      title: 'Troubleshooting connection drops',
-      content: 'Common solutions for Bluetooth connection issues with Soundcore devices. Covers interference, distance, and firmware update procedures.',
-      type: 'FAQ' as const,
-      product: 'General',
-      language: 'EN',
-      qualityScore: 85,
-      updatedAt: '2024-10-13',
-    },
-  ];
+  // Convert knowledge items to card format for KnowledgeCard component
+  const recentKnowledge = (knowledgeData?.items || []).map((item: KnowledgeItem) => {
+    // Map knowledge type to KnowledgeStatus for KnowledgeCard
+    const typeMap: Record<string, 'FAQ' | 'Guide' | 'Spec' | 'Tutorial'> = {
+      'faq': 'FAQ',
+      'guide': 'Guide',
+      'tutorial': 'Tutorial',
+      'spec': 'Spec',
+      'troubleshooting': 'Guide',
+      'review': 'Guide',
+    };
+
+    return {
+      id: String(item.id),
+      title: item.title,
+      content: item.content.substring(0, 150) + (item.content.length > 150 ? '...' : ''),
+      type: typeMap[item.type] || 'Guide',
+      product: item.product_id ? `Product ${item.product_id}` : 'General',
+      language: item.language.toUpperCase(),
+      qualityScore: Math.round(item.quality_score),
+      updatedAt: new Date(item.updated_at).toISOString().split('T')[0],
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - Optimized for mobile */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
-              <p className="text-gray-500 mt-1">Welcome back! Here's what's happening today.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard Overview</h1>
+              <p className="text-sm sm:text-base text-gray-500 mt-1">Welcome back! Here's what's happening today.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="medium">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Hide text on mobile, show icon only */}
+              <Button variant="outline" size="medium" className="flex-1 sm:flex-initial">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Export
+                <span className="hidden sm:inline ml-2">Export</span>
+                <span className="sm:hidden ml-2">Export</span>
               </Button>
-              <Button variant="primary" size="medium">
+              <Button variant="primary" size="medium" className="flex-1 sm:flex-initial">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                New Knowledge
+                <span className="hidden sm:inline ml-2">New Knowledge</span>
+                <span className="sm:hidden ml-2">New</span>
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
+      {/* Main Content - Optimized padding for mobile */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Stats Grid - Optimized for all screen sizes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {statsLoading ? (
+            // Loading skeleton for stats
+            Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index} padding="medium" shadow="md">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+                  <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            stats.map((stat, index) => (
+              <StatCard key={index} {...stat} />
+            ))
+          )}
         </div>
 
         {/* Recent Knowledge */}
@@ -172,17 +190,36 @@ export default function DashboardPage() {
               Recent Knowledge Items
             </CardHeader>
             <CardBody>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {recentKnowledge.map((item) => (
-                  <KnowledgeCard
-                    key={item.id}
-                    {...item}
-                    onView={() => console.log('View', item.id)}
-                    onEdit={() => console.log('Edit', item.id)}
-                    onDelete={() => console.log('Delete', item.id)}
-                  />
-                ))}
-              </div>
+              {knowledgeLoading ? (
+                // Loading skeleton for knowledge items
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} padding="medium" shadow="sm">
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
+                        <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
+                        <div className="flex gap-2">
+                          <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                          <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {recentKnowledge.map((item) => (
+                    <KnowledgeCard
+                      key={item.id}
+                      {...item}
+                      onView={() => console.log('View', item.id)}
+                      onEdit={() => console.log('Edit', item.id)}
+                      onDelete={() => console.log('Delete', item.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>

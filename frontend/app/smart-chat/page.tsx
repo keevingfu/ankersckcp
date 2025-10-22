@@ -312,7 +312,7 @@ const MessageBubble: React.FC<{
 
 export default function SmartChatPage() {
   // State
-  const [conversations, setConversations] = useState(MOCK_CONVERSATIONS);
+  const [conversations] = useState(MOCK_CONVERSATIONS);
   const [activeConvId, setActiveConvId] = useState('1');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -409,7 +409,7 @@ export default function SmartChatPage() {
     alert('Copied to clipboard!');
   };
 
-  const handleRegenerate = (messageId: string) => {
+  const handleRegenerate = () => {
     alert('Regenerating response...');
   };
 
@@ -453,7 +453,7 @@ export default function SmartChatPage() {
               message={message}
               onLike={() => handleLike(message.id)}
               onCopy={() => handleCopy(message.content)}
-              onRegenerate={message.role === 'assistant' ? () => handleRegenerate(message.id) : undefined}
+              onRegenerate={message.role === 'assistant' ? handleRegenerate : undefined}
             />
           ))}
 

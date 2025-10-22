@@ -1,0 +1,8 @@
+# API Documentation Generation Requirements
+# Install with: pip install -r requirements-docs.txt
+
+# HTTP client for fetching OpenAPI specs
+requests>=2.31.0
+
+# Environment variable management (optional)
+python-dotenv>=1.0.0

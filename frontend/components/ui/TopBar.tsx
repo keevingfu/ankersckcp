@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Input from './Input';
 
 interface Notification {
@@ -17,7 +18,7 @@ interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
 }
 
-interface TopBarProps {
+export interface TopBarProps {
   user?: {
     name: string;
     email: string;
@@ -188,9 +189,11 @@ const TopBar: React.FC<TopBarProps> = ({ user }) => {
             {/* Avatar */}
             <div className="w-9 h-9 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full flex items-center justify-center">
               {defaultUser.avatar ? (
-                <img
+                <Image
                   src={defaultUser.avatar}
                   alt={defaultUser.name}
+                  width={36}
+                  height={36}
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (

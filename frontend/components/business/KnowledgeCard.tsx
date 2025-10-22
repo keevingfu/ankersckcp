@@ -1,33 +1,61 @@
 import React from 'react';
 import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 
-export interface KnowledgeCardProps {
+export type KnowledgeStatus = 'FAQ' | 'Guide' | 'Spec' | 'Tutorial';
+
+export interface Knowledge {
   id: string;
   title: string;
-  content: string;
-  type: 'FAQ' | 'Guide' | 'Spec' | 'Tutorial';
-  product: string;
-  language: string;
-  qualityScore: number;
-  updatedAt: string;
+  summary: string;
+  category: string;
+  tags: string[];
+  lastUpdated: string;
+  views: number;
+  likes: number;
+  status: string;
+  confidence: number;
+}
+
+export interface KnowledgeCardProps {
+  id?: string;
+  title?: string;
+  content?: string;
+  type?: KnowledgeStatus;
+  product?: string;
+  language?: string;
+  qualityScore?: number;
+  updatedAt?: string;
+  knowledge?: Knowledge;
+  onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
 }
 
 const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
-  id,
-  title,
-  content,
-  type,
-  product,
-  language,
-  qualityScore,
-  updatedAt,
+  id: _propId,
+  title: propTitle,
+  content: propContent,
+  type: propType,
+  product: propProduct,
+  language: propLanguage,
+  qualityScore: propQualityScore,
+  updatedAt: propUpdatedAt,
+  knowledge,
+  onClick: _onClick,
   onEdit,
   onDelete,
   onView,
 }) => {
+  // Use knowledge object if provided, otherwise use individual props
+  const title = knowledge?.title || propTitle || '';
+  const content = knowledge?.summary || propContent || '';
+  const type = propType || 'Guide';
+  const product = propProduct || knowledge?.category || '';
+  const language = propLanguage || '';
+  const qualityScore = propQualityScore || knowledge?.confidence || 0;
+  const updatedAt = propUpdatedAt || knowledge?.lastUpdated || '';
+
   const typeColors = {
     FAQ: 'bg-blue-100 text-blue-700',
     Guide: 'bg-green-100 text-green-700',
@@ -57,7 +85,8 @@ const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
         }
         actions={
           <div className="relative group">
-            <button className="p-1 hover:bg-gray-100 rounded transition-colors">
+            {/* Increased touch target to 44px minimum */}
+            <button className="p-2.5 hover:bg-gray-100 rounded-lg transition-all active:scale-95 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
               <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
@@ -67,7 +96,7 @@ const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
                 {onView && (
                   <button
                     onClick={onView}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 hover:bg-purple-50 active:bg-purple-100 flex items-center gap-2 touch-manipulation transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -79,7 +108,7 @@ const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
                 {onEdit && (
                   <button
                     onClick={onEdit}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 hover:bg-purple-50 active:bg-purple-100 flex items-center gap-2 touch-manipulation transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -90,7 +119,7 @@ const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
                 {onDelete && (
                   <button
                     onClick={onDelete}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-red-600 hover:bg-red-50 active:bg-red-100 flex items-center gap-2 touch-manipulation transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -1,0 +1,96 @@
+{
+  "projectInfo": {
+    "name": "Soundcore KCP",
+    "version": "1.0.0",
+    "startDate": "2024-10-15",
+    "targetCompletion": "2024-11-15",
+    "automationRate": 67
+  },
+  "currentState": {
+    "phase": "initialization",
+    "task": "component-library",
+    "status": "in-progress",
+    "lastCheckpoint": "cp002",
+    "lastSave": "2024-10-15T16:48:30Z"
+  },
+  "phases": {
+    "initialization": {
+      "status": "completed",
+      "startDate": "2024-10-15T10:00:00Z",
+      "endDate": "2024-10-15T10:32:00Z",
+      "progress": 100,
+      "tasks": {
+        "create-structure": {
+          "status": "completed",
+          "duration": "5m"
+        },
+        "init-git": {
+          "status": "completed",
+          "duration": "2m"
+        },
+        "install-deps": {
+          "status": "completed",
+          "duration": "8m"
+        },
+        "config-env": {
+          "status": "completed",
+          "duration": "3m"
+        }
+      }
+    },
+    "design-system": {
+      "status": "in-progress",
+      "startDate": "2024-10-15T10:35:00Z",
+      "endDate": null,
+      "progress": 45,
+      "tasks": {
+        "design-spec": {
+          "status": "completed",
+          "duration": "2h"
+        },
+        "component-library": {
+          "status": "in-progress",
+          "duration": null
+        },
+        "storybook": {
+          "status": "pending",
+          "duration": null
+        },
+        "visual-testing": {
+          "status": "pending",
+          "duration": null
+        }
+      }
+    },
+    "knowledge-hub": {
+      "status": "pending"
+    }
+  },
+  "checkpoints": [
+    {
+      "id": "cp001",
+      "timestamp": "2024-10-15T10:30:00Z",
+      "phase": "initialization",
+      "description": "Project structure created",
+      "filesSaved": 15,
+      "testsRun": 0,
+      "status": "success"
+    },
+    {
+      "id": "cp002",
+      "timestamp": "2025-10-15T21:55:32.333207",
+      "phase": "initialization",
+      "description": "初始化阶段完成",
+      "status": "success"
+    }
+  ],
+  "metrics": {
+    "totalTasks": 156,
+    "completedTasks": 45,
+    "inProgressTasks": 12,
+    "pendingTasks": 99,
+    "filesSaved": 234,
+    "testsRun": 89,
+    "codeCoverage": 85
+  }
+}

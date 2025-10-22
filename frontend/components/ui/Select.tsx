@@ -355,7 +355,7 @@ export const Select: React.FC<SelectProps> = ({
         {/* Icons */}
         <div className="flex items-center gap-1 ml-2">
           {loading && <LoadingIcon />}
-          {clearable && !disabled && value && (value as any).length > 0 && !loading && (
+          {clearable && !disabled && value && (Array.isArray(value) ? value.length > 0 : true) && !loading && (
             <button
               onClick={handleClear}
               className="p-1 hover:bg-gray-100 rounded transition-colors"

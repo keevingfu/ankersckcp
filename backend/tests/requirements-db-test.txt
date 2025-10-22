@@ -1,0 +1,14 @@
+# Database Performance Testing Requirements
+# Install with: pip install -r requirements-db-test.txt
+
+# PostgreSQL driver
+psycopg2-binary>=2.9.9
+
+# MongoDB driver
+pymongo>=4.6.0
+
+# Redis driver
+redis>=5.0.1
+
+# Core dependencies (if not already installed)
+python-dotenv>=1.0.0

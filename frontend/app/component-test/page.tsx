@@ -10,6 +10,14 @@ import { Table, Select, ContentPreview } from '@/components';
 import type { Column } from '@/components/ui/Table';
 import type { Option } from '@/components/ui/Select';
 
+interface TableDataRow {
+  id: number;
+  title: string;
+  category: string;
+  status: string;
+  updatedAt: string;
+}
+
 export default function ComponentTestPage() {
   // ============================================================================
   // State
@@ -17,7 +25,7 @@ export default function ComponentTestPage() {
   const [tablePage, setTablePage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [selectedRows, setSelectedRows] = useState<TableDataRow[]>([]);
 
   // ============================================================================
   // Mock Data
@@ -45,7 +53,7 @@ export default function ComponentTestPage() {
       sortable: true,
       render: (value) => (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-          {value}
+          {String(value)}
         </span>
       ),
     },
@@ -59,9 +67,10 @@ export default function ComponentTestPage() {
           Pending: 'bg-yellow-100 text-yellow-700',
           Inactive: 'bg-gray-100 text-gray-700',
         };
+        const statusValue = String(value);
         return (
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors[value]}`}>
-            {value}
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colors[statusValue]}`}>
+            {statusValue}
           </span>
         );
       },
@@ -148,7 +157,7 @@ export default function ComponentTestPage() {
     console.log('Table page changed to:', page);
   };
 
-  const handleRowSelectionChange = (keys: React.Key[], rows: any[]) => {
+  const handleRowSelectionChange = (_keys: React.Key[], rows: TableDataRow[]) => {
     setSelectedRows(rows);
     console.log('Selected rows:', rows);
   };

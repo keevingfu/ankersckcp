@@ -25,7 +25,7 @@ const Modal: React.FC<ModalProps> = ({
   open,
   onClose,
   size = 'medium',
-  variant = 'default',
+  variant: _variant = 'default',
   title,
   children,
   footer,
@@ -158,12 +158,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     info: 'text-blue-500 bg-blue-100',
     warning: 'text-orange-500 bg-orange-100',
     danger: 'text-red-500 bg-red-100',
-  };
-
-  const buttonVariants = {
-    info: 'primary',
-    warning: 'warning',
-    danger: 'danger',
   };
 
   return (

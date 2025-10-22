@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 
+export type InputVariant = 'default' | 'filled' | 'outlined' | 'search';
+export type InputSize = 'small' | 'medium' | 'large';
+export type InputStatus = 'default' | 'error' | 'success' | 'warning';
+
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  variant?: InputVariant;
+  inputSize?: InputSize;
+  status?: InputStatus;
   label?: string;
   error?: string;
   success?: boolean;

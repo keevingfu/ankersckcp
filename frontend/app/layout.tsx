@@ -5,6 +5,8 @@
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { SWRProvider } from '@/lib/swr';
+import WebVitalsReporter from '@/components/WebVitalsReporter';
 import '../styles/globals.css';
 
 const inter = Inter({
@@ -46,7 +48,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="font-sans antialiased bg-gray-50">
-        {children}
+        <WebVitalsReporter />
+        <SWRProvider>{children}</SWRProvider>
       </body>
     </html>
   );

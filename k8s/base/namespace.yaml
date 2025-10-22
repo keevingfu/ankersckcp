@@ -1,0 +1,12 @@
+# ============================================================================
+# Kubernetes Namespace
+# Isolates resources for Soundcore KCP application
+# ============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: soundcore-kcp
+  labels:
+    app: soundcore-kcp
+    environment: production

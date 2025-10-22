@@ -1,0 +1,83 @@
+# FastAPI Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database - Relational
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+asyncpg==0.29.0  # Async PostgreSQL driver
+alembic==1.13.1
+
+# Database - NoSQL
+pymongo==4.6.1
+motor==3.3.2  # Async MongoDB driver
+
+# Vector Database
+pinecone-client==3.0.2
+
+# Graph Database
+neo4j==5.16.0
+
+# Redis Cache
+redis==5.0.1
+hiredis==2.3.2
+
+# AI & LLM
+openai==1.10.0
+anthropic==0.8.1
+langchain==0.1.4
+langchain-openai==0.0.5
+tiktoken==0.5.2
+
+# Vector Embeddings & Search
+sentence-transformers==2.3.1
+faiss-cpu==1.7.4
+
+# HTTP Client
+httpx>=0.23.0,<1.0.0
+requests==2.31.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+bcrypt==4.1.2
+
+# Background Tasks & Scheduling
+celery==5.3.6
+apscheduler==3.10.4
+
+# Message Queue
+kafka-python==2.0.2
+
+# Data Validation & Serialization
+python-dotenv==1.0.0
+email-validator==2.1.0
+jsonschema==4.20.0
+
+# Monitoring & Logging
+prometheus-client==0.19.0
+python-json-logger==2.0.7
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+pytest-httpx>=0.30.0
+
+# Development Tools
+black==24.1.1
+pylint==3.0.3
+mypy==1.8.0
+
+# CORS (already included in fastapi)
+# fastapi includes starlette which has CORS middleware
+
+# Date & Time
+python-dateutil==2.8.2
+
+# Utilities
+tenacity==8.2.3  # Retry logic
+aiofiles==23.2.1  # Async file operations

@@ -6,11 +6,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { mutate } from 'swr';
 import MainLayout from '@/components/ui/MainLayout';
 import KnowledgeCard, { Knowledge } from '@/components/business/KnowledgeCard';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
+import { useKnowledgeItems, useKnowledgeStats, deleteKnowledgeItem } from '@/lib/swr';
+import type { KnowledgeItem, KnowledgeType, KnowledgeStatus } from '@/lib/api/types';
 
 const KnowledgeBasePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,112 +21,98 @@ const KnowledgeBasePage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<'latest' | 'views' | 'likes' | 'quality'>('latest');
 
-  // Mock data
-  const knowledgeList: Knowledge[] = [
-    {
-      id: '1',
-      title: 'Liberty 4 Pro Quick Start Guide',
-      summary: 'Comprehensive guide for setting up and using Liberty 4 Pro earbuds including pairing, controls, and app setup.',
-      category: 'Product Guide',
-      tags: ['Liberty 4 Pro', 'Setup', 'Pairing'],
-      lastUpdated: '2024-10-10',
-      views: 1245,
-      likes: 89,
-      status: 'published',
-      confidence: 98,
-    },
-    {
-      id: '2',
-      title: 'Soundcore App Setup Instructions',
-      summary: 'Step-by-step instructions for downloading, installing, and configuring the Soundcore mobile app for iOS and Android.',
-      category: 'App Guide',
-      tags: ['App', 'Setup', 'iOS', 'Android'],
-      lastUpdated: '2024-10-08',
-      views: 1103,
-      likes: 76,
-      status: 'published',
-      confidence: 95,
-    },
-    {
-      id: '3',
-      title: 'Noise Cancellation Technology Explained',
-      summary: 'Technical overview of hybrid active noise cancellation technology used in Soundcore products.',
-      category: 'Technical',
-      tags: ['ANC', 'Technology', 'Features'],
-      lastUpdated: '2024-10-05',
-      views: 987,
-      likes: 134,
-      status: 'published',
-      confidence: 92,
-    },
-    {
-      id: '4',
-      title: 'Battery Care Best Practices',
-      summary: 'Tips and recommendations for extending battery life and maintaining optimal performance.',
-      category: 'Support',
-      tags: ['Battery', 'Maintenance', 'Tips'],
-      lastUpdated: '2024-10-03',
-      views: 856,
-      likes: 67,
-      status: 'published',
-      confidence: 90,
-    },
-    {
-      id: '5',
-      title: 'Warranty & Support Information',
-      summary: 'Complete warranty coverage details, claim process, and customer support contact information.',
-      category: 'Support',
-      tags: ['Warranty', 'Support', 'Policy'],
-      lastUpdated: '2024-10-01',
-      views: 734,
-      likes: 45,
-      status: 'published',
-      confidence: 89,
-    },
-    {
-      id: '6',
-      title: 'Space A40 User Manual - Draft',
-      summary: 'Draft version of comprehensive user manual for Space A40 over-ear headphones.',
-      category: 'Product Guide',
-      tags: ['Space A40', 'Manual', 'Draft'],
-      lastUpdated: '2024-09-28',
-      views: 234,
-      likes: 12,
-      status: 'draft',
-      confidence: 75,
-    },
-  ];
-
-  const categories = [
-    { id: 'all', label: 'All Categories', count: knowledgeList.length },
-    { id: 'product', label: 'Product Guide', count: 2 },
-    { id: 'app', label: 'App Guide', count: 1 },
-    { id: 'technical', label: 'Technical', count: 1 },
-    { id: 'support', label: 'Support', count: 2 },
-  ];
-
-  const filteredKnowledge = knowledgeList.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesCategory = selectedCategory === 'all' || 
-                           item.category.toLowerCase().replace(' ', '') === selectedCategory;
-    
-    const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
-
-    return matchesSearch && matchesCategory && matchesStatus;
+  // Fetch knowledge items using SWR
+  const { data: knowledgeData, error, isLoading: loading } = useKnowledgeItems({
+    page,
+    page_size: 20,
+    types: selectedCategory !== 'all' ? [(selectedCategory as KnowledgeType)] : undefined,
+    status: selectedStatus !== 'all' ? [(selectedStatus as KnowledgeStatus)] : undefined,
   });
+
+  // Fetch statistics for category counts
+  const { data: stats } = useKnowledgeStats();
+
+  // Convert API data to component format
+  const knowledgeList: Knowledge[] = (knowledgeData?.items || []).map((item: KnowledgeItem) => ({
+    id: String(item.id),
+    title: item.title,
+    summary: item.content.substring(0, 200) + (item.content.length > 200 ? '...' : ''),
+    category: item.type,
+    tags: item.tags || [],
+    lastUpdated: new Date(item.updated_at).toISOString().split('T')[0],
+    views: item.view_count,
+    likes: item.like_count,
+    status: item.status,
+    confidence: Math.round(item.quality_score),
+  }));
+
+  // Category counts
+  const categories = [
+    { id: 'all', label: 'All Categories', count: stats?.total_items || 0 },
+    { id: 'faq', label: 'FAQ', count: stats?.items_by_type?.faq || 0 },
+    { id: 'guide', label: 'Guide', count: stats?.items_by_type?.guide || 0 },
+    { id: 'troubleshooting', label: 'Troubleshooting', count: stats?.items_by_type?.troubleshooting || 0 },
+    { id: 'technical', label: 'Technical', count: stats?.items_by_type?.technical || 0 },
+  ];
+
+  // Client-side search filtering (for demo - ideally should be server-side)
+  const filteredKnowledge = knowledgeList.filter((item) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return item.title.toLowerCase().includes(query) ||
+           item.summary.toLowerCase().includes(query) ||
+           item.tags.some((tag: string) => tag.toLowerCase().includes(query));
+  });
+
+  // Sort filtered knowledge
+  const sortedKnowledge = [...filteredKnowledge].sort((a, b) => {
+    switch (sortBy) {
+      case 'views':
+        return b.views - a.views;
+      case 'likes':
+        return b.likes - a.likes;
+      case 'quality':
+        return b.confidence - a.confidence;
+      case 'latest':
+      default:
+        return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
+    }
+  });
+
+  // Handle delete with SWR mutation
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this knowledge item?')) {
+      try {
+        await deleteKnowledgeItem(Number(id));
+        // Revalidate the knowledge items list
+        mutate(['knowledge-items', {
+          page,
+          page_size: 20,
+          types: selectedCategory !== 'all' ? [(selectedCategory as KnowledgeType)] : undefined,
+          status: selectedStatus !== 'all' ? [(selectedStatus as KnowledgeStatus)] : undefined,
+        }]);
+        // Also revalidate stats
+        mutate('knowledge-stats');
+      } catch (err) {
+        console.error('Failed to delete knowledge item:', err);
+        alert('Failed to delete knowledge item. Please try again.');
+      }
+    }
+  };
+
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   return (
     <MainLayout>
-      {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Knowledge Base</h1>
-            <p className="text-sm text-gray-600 mt-2">
+      {/* Page Header - Optimized for mobile */}
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Knowledge Base</h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">
               Browse and manage your knowledge repository
             </p>
           </div>
@@ -132,16 +121,65 @@ const KnowledgeBasePage: React.FC = () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span className="ml-2">Add Knowledge</span>
+            <span className="hidden sm:inline ml-2">Add Knowledge</span>
+            <span className="sm:hidden ml-2">Add</span>
           </Button>
         </div>
       </div>
 
-      <div className="p-8">
-        <div className="flex gap-6">
-          {/* Left Sidebar - Filters */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
+      {/* Error Alert - Optimized padding */}
+      {error && (
+        <div className="mx-4 sm:mx-8 mt-4 sm:mt-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-red-800">Failed to load knowledge items</h3>
+                <p className="text-sm text-red-700 mt-1">{String(error)}</p>
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={() => mutate(['knowledge-items', {
+                    page,
+                    page_size: 20,
+                    types: selectedCategory !== 'all' ? [(selectedCategory as KnowledgeType)] : undefined,
+                    status: selectedStatus !== 'all' ? [(selectedStatus as KnowledgeStatus)] : undefined,
+                  }])}
+                  className="mt-3"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 sm:p-8">
+        {/* Mobile Filter Toggle */}
+        <div className="lg:hidden mb-4">
+          <Button
+            variant="outline"
+            size="medium"
+            onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+            className="w-full"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span className="ml-2">Filters</span>
+          </Button>
+        </div>
+
+        <div className="flex gap-4 sm:gap-6">
+          {/* Left Sidebar - Filters - Hidden on mobile, shown on lg+ */}
+          <div className={`
+            ${showMobileSidebar ? 'block' : 'hidden'} lg:block
+            w-full lg:w-64 flex-shrink-0 mb-6 lg:mb-0
+          `}>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 lg:sticky lg:top-24">
               <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
               <ul className="space-y-2">
                 {categories.map((category) => (
@@ -201,21 +239,21 @@ const KnowledgeBasePage: React.FC = () => {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1">
-            {/* Search and Controls */}
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <div className="flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Search and Controls - Optimized for mobile */}
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <div className="flex-1">
                   <Input
                     variant="search"
-                    placeholder="Search knowledge by title, content, or tags..."
+                    placeholder="Search knowledge..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     clearable
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-end space-x-2">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`
@@ -250,38 +288,57 @@ const KnowledgeBasePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Results Count */}
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-semibold">{filteredKnowledge.length}</span> result{filteredKnowledge.length !== 1 ? 's' : ''}
+            {/* Results Count - Optimized for mobile */}
+            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-xs sm:text-sm text-gray-600">
+                Showing <span className="font-semibold">{sortedKnowledge.length}</span> result{sortedKnowledge.length !== 1 ? 's' : ''}
+                {knowledgeData && knowledgeData.total > sortedKnowledge.length && (
+                  <span className="ml-1 hidden sm:inline">of {knowledgeData.total} total</span>
+                )}
               </p>
-              <select className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <option>Sort by: Latest</option>
-                <option>Sort by: Most Viewed</option>
-                <option>Sort by: Most Liked</option>
-                <option>Sort by: Highest Confidence</option>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'latest' | 'views' | 'likes' | 'quality')}
+                className="w-full sm:w-auto text-xs sm:text-sm border border-gray-200 rounded-lg px-3 py-2 sm:py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="latest">Sort by: Latest</option>
+                <option value="views">Sort by: Most Viewed</option>
+                <option value="likes">Sort by: Most Liked</option>
+                <option value="quality">Sort by: Highest Confidence</option>
               </select>
             </div>
 
-            {/* Knowledge Grid/List */}
-            <div className={
-              viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
-                : 'space-y-4'
-            }>
-              {filteredKnowledge.map((knowledge) => (
-                <KnowledgeCard
-                  key={knowledge.id}
-                  knowledge={knowledge}
-                  onClick={() => console.log('View knowledge:', knowledge.id)}
-                  onEdit={() => console.log('Edit knowledge:', knowledge.id)}
-                  onDelete={() => console.log('Delete knowledge:', knowledge.id)}
-                />
-              ))}
-            </div>
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+                  <p className="text-gray-600">Loading knowledge items...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Knowledge Grid/List - Optimized for all screen sizes */}
+            {!loading && !error && (
+              <div className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6'
+                  : 'space-y-3 sm:space-y-4'
+              }>
+                {sortedKnowledge.map((knowledge) => (
+                  <KnowledgeCard
+                    key={knowledge.id}
+                    knowledge={knowledge}
+                    onClick={() => console.log('View knowledge:', knowledge.id)}
+                    onEdit={() => console.log('Edit knowledge:', knowledge.id)}
+                    onDelete={() => handleDelete(knowledge.id)}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Empty State */}
-            {filteredKnowledge.length === 0 && (
+            {!loading && !error && sortedKnowledge.length === 0 && (
               <div className="text-center py-12">
                 <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -297,6 +354,39 @@ const KnowledgeBasePage: React.FC = () => {
                 }}>
                   Clear Filters
                 </Button>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && !error && knowledgeData && knowledgeData.total_pages > 1 && (
+              <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
+                <div className="text-sm text-gray-600">
+                  Page {knowledgeData.page} of {knowledgeData.total_pages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === knowledgeData.total_pages}
+                  >
+                    Next
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Button>
+                </div>
               </div>
             )}
           </div>

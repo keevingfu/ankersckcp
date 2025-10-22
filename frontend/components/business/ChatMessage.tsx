@@ -16,6 +16,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 
 // ============================================================================
 // Types
@@ -62,7 +63,7 @@ const Avatar: React.FC<{ src?: string; name?: string; role: MessageRole }> = ({ 
   return (
     <div className={`flex-shrink-0 w-8 h-8 rounded-full ${bgColor} flex items-center justify-center text-white text-sm font-medium overflow-hidden`}>
       {src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" />
+        <Image src={src} alt={name || 'Avatar'} width={32} height={32} className="w-full h-full object-cover" />
       ) : (
         <span>{getInitials(name)}</span>
       )}
@@ -156,7 +157,7 @@ const MessageActions: React.FC<{
 // Message Content Renderer
 // ============================================================================
 
-const MessageContent: React.FC<{ content: string; role: MessageRole }> = ({ content, role }) => {
+const MessageContent: React.FC<{ content: string; role: MessageRole }> = ({ content }) => {
   // Simple Markdown-like rendering
   const renderContent = (text: string) => {
     // Code blocks
@@ -164,7 +165,7 @@ const MessageContent: React.FC<{ content: string; role: MessageRole }> = ({ cont
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
 
-    text.replace(codeBlockRegex, (match, lang, code, offset) => {
+    text.replace(codeBlockRegex, (match, _lang, code, offset) => {
       // Add text before code block
       if (offset > lastIndex) {
         parts.push(renderInlineMarkdown(text.slice(lastIndex, offset)));
@@ -220,7 +221,7 @@ const MessageContent: React.FC<{ content: string; role: MessageRole }> = ({ cont
 // ============================================================================
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
-  id,
+  id: _id,
   role,
   content,
   timestamp,

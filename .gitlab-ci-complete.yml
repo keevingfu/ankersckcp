@@ -1,0 +1,390 @@
+# ============================================================================
+# GitLab CI/CD Configuration - Complete Pipeline
+# Project: Anker Soundcore KCP
+# ============================================================================
+
+variables:
+  # Docker Registry
+  DOCKER_REGISTRY: registry.gitlab.com
+  DOCKER_IMAGE_PREFIX: $CI_REGISTRY_IMAGE
+
+  # Version Tags
+  VERSION: $CI_COMMIT_SHORT_SHA
+
+  # Environment URLs
+  STAGING_URL: https://staging-kcp.soundcore.com
+  PRODUCTION_URL: https://kcp.soundcore.com
+
+# Define pipeline stages
+stages:
+  - lint          # Code quality checks
+  - test          # Unit and integration tests
+  - build         # Docker image builds
+  - deploy-staging # Deploy to staging environment
+  - test-e2e      # End-to-end tests on staging
+  - deploy-prod   # Deploy to production
+  - monitor       # Post-deployment monitoring
+
+# ============================================================================
+# Templates
+# ============================================================================
+
+.docker_template: &docker_template
+  image: docker:24-cli
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+.node_template: &node_template
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/node_modules/
+      - frontend/.next/cache/
+
+.python_template: &python_template
+  image: python:3.11-slim
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/.venv/
+  before_script:
+    - cd backend
+    - pip install virtualenv
+    - virtualenv .venv
+    - source .venv/bin/activate
+    - pip install -r requirements.txt
+
+# ============================================================================
+# Stage 1: Lint
+# ============================================================================
+
+lint:frontend:
+  <<: *node_template
+  stage: lint
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
+    - npm run type-check
+  only:
+    - merge_requests
+    - main
+
+lint:backend:
+  <<: *python_template
+  stage: lint
+  script:
+    - pylint backend/**/*.py
+    - black --check backend/
+    - mypy backend/
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+
+# ============================================================================
+# Stage 2: Test
+# ============================================================================
+
+test:frontend:
+  <<: *node_template
+  stage: test
+  script:
+    - cd frontend
+    - npm ci
+    - npm run test:ci
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+    paths:
+      - frontend/coverage/
+    expire_in: 30 days
+  only:
+    - merge_requests
+    - main
+
+test:backend:unit:
+  <<: *python_template
+  stage: test
+  services:
+    - postgres:16
+    - mongo:7
+    - redis:7-alpine
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_password
+    MONGO_INITDB_ROOT_USERNAME: test_user
+    MONGO_INITDB_ROOT_PASSWORD: test_password
+    DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
+  script:
+    - pytest tests/unit --cov=backend --cov-report=xml --cov-report=term
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+    paths:
+      - backend/htmlcov/
+    expire_in: 30 days
+  only:
+    - merge_requests
+    - main
+
+test:backend:integration:
+  <<: *python_template
+  stage: test
+  services:
+    - postgres:16
+    - mongo:7
+    - redis:7-alpine
+    - neo4j:5.15
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_password
+    DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
+  script:
+    - pytest tests/integration -v
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+
+# ============================================================================
+# Stage 3: Build Docker Images
+# ============================================================================
+
+build:frontend:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd frontend
+    - docker build -t $DOCKER_IMAGE_PREFIX/frontend:$VERSION .
+    - docker build -t $DOCKER_IMAGE_PREFIX/frontend:latest .
+    - docker push $DOCKER_IMAGE_PREFIX/frontend:$VERSION
+    - docker push $DOCKER_IMAGE_PREFIX/frontend:latest
+  only:
+    - main
+    - tags
+
+build:knowledge-service:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd backend
+    - docker build -t $DOCKER_IMAGE_PREFIX/knowledge-service:$VERSION -f Dockerfile .
+    - docker build -t $DOCKER_IMAGE_PREFIX/knowledge-service:latest -f Dockerfile .
+    - docker push $DOCKER_IMAGE_PREFIX/knowledge-service:$VERSION
+    - docker push $DOCKER_IMAGE_PREFIX/knowledge-service:latest
+  only:
+    - main
+    - tags
+
+build:analytics-service:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd backend
+    - docker build -t $DOCKER_IMAGE_PREFIX/analytics-service:$VERSION -f Dockerfile .
+    - docker push $DOCKER_IMAGE_PREFIX/analytics-service:$VERSION
+  only:
+    - main
+    - tags
+
+build:content-service:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd backend
+    - docker build -t $DOCKER_IMAGE_PREFIX/content-service:$VERSION -f Dockerfile .
+    - docker push $DOCKER_IMAGE_PREFIX/content-service:$VERSION
+  only:
+    - main
+    - tags
+
+build:support-service:
+  <<: *docker_template
+  stage: build
+  script:
+    - cd backend
+    - docker build -t $DOCKER_IMAGE_PREFIX/support-service:$VERSION -f Dockerfile .
+    - docker push $DOCKER_IMAGE_PREFIX/support-service:$VERSION
+  only:
+    - main
+    - tags
+
+# ============================================================================
+# Stage 4: Deploy to Staging
+# ============================================================================
+
+deploy:staging:
+  stage: deploy-staging
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: $STAGING_URL
+    on_stop: stop:staging
+  script:
+    - kubectl config use-context staging
+    - |
+      # Update deployments with new image versions
+      kubectl set image deployment/frontend frontend=$DOCKER_IMAGE_PREFIX/frontend:$VERSION -n soundcore-kcp-staging
+      kubectl set image deployment/knowledge-service knowledge-service=$DOCKER_IMAGE_PREFIX/knowledge-service:$VERSION -n soundcore-kcp-staging
+      kubectl set image deployment/analytics-service analytics-service=$DOCKER_IMAGE_PREFIX/analytics-service:$VERSION -n soundcore-kcp-staging
+      kubectl set image deployment/content-service content-service=$DOCKER_IMAGE_PREFIX/content-service:$VERSION -n soundcore-kcp-staging
+      kubectl set image deployment/support-service support-service=$DOCKER_IMAGE_PREFIX/support-service:$VERSION -n soundcore-kcp-staging
+    - |
+      # Wait for rollout to complete
+      kubectl rollout status deployment/frontend -n soundcore-kcp-staging
+      kubectl rollout status deployment/knowledge-service -n soundcore-kcp-staging
+      kubectl rollout status deployment/analytics-service -n soundcore-kcp-staging
+    - echo "Deployment to staging completed successfully"
+  only:
+    - main
+  when: manual
+
+stop:staging:
+  stage: deploy-staging
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    action: stop
+  script:
+    - kubectl scale deployment --all --replicas=0 -n soundcore-kcp-staging
+  when: manual
+  only:
+    - main
+
+# ============================================================================
+# Stage 5: End-to-End Tests on Staging
+# ============================================================================
+
+test:e2e:staging:
+  stage: test-e2e
+  image: mcr.microsoft.com/playwright:v1.40.0
+  script:
+    - cd frontend
+    - npm ci
+    - npx playwright install
+    - BASE_URL=$STAGING_URL npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - frontend/test-results/
+      - frontend/playwright-report/
+    expire_in: 7 days
+  only:
+    - main
+  needs:
+    - deploy:staging
+
+# ============================================================================
+# Stage 6: Deploy to Production
+# ============================================================================
+
+deploy:production:
+  stage: deploy-prod
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: $PRODUCTION_URL
+  script:
+    - kubectl config use-context production
+    - |
+      # Blue-Green Deployment Strategy
+      # Create new deployment (green)
+      kubectl apply -f k8s/production/green/ -n soundcore-kcp-prod
+
+      # Wait for green deployment to be ready
+      kubectl rollout status deployment/frontend-green -n soundcore-kcp-prod
+      kubectl rollout status deployment/knowledge-service-green -n soundcore-kcp-prod
+
+      # Run smoke tests on green deployment
+      ./scripts/smoke-test.sh green
+
+      # Switch traffic to green deployment
+      kubectl patch service frontend -n soundcore-kcp-prod -p '{"spec":{"selector":{"version":"green"}}}'
+      kubectl patch service knowledge-service -n soundcore-kcp-prod -p '{"spec":{"selector":{"version":"green"}}}'
+
+      # Wait 5 minutes for monitoring
+      sleep 300
+
+      # Check for errors
+      ERROR_RATE=$(kubectl top pods -n soundcore-kcp-prod | grep -c Error || true)
+      if [ $ERROR_RATE -gt 0 ]; then
+        echo "Errors detected, rolling back..."
+        kubectl patch service frontend -n soundcore-kcp-prod -p '{"spec":{"selector":{"version":"blue"}}}'
+        exit 1
+      fi
+
+      # Delete old blue deployment
+      kubectl delete deployment -l version=blue -n soundcore-kcp-prod
+
+      # Rename green to blue for next deployment
+      kubectl label deployment -l version=green version=blue --overwrite -n soundcore-kcp-prod
+    - echo "Production deployment completed successfully"
+  only:
+    - tags
+  when: manual
+  needs:
+    - test:e2e:staging
+
+# ============================================================================
+# Stage 7: Post-Deployment Monitoring
+# ============================================================================
+
+monitor:production:
+  stage: monitor
+  image: curlimages/curl:latest
+  script:
+    - |
+      # Health check
+      curl -f $PRODUCTION_URL/api/health || exit 1
+
+      # Check all services
+      curl -f $PRODUCTION_URL/api/v1/knowledge/health || exit 1
+      curl -f $PRODUCTION_URL/api/v1/analytics/health || exit 1
+
+      echo "All health checks passed"
+    - |
+      # Send Slack notification
+      curl -X POST $SLACK_WEBHOOK_URL \
+        -H 'Content-Type: application/json' \
+        -d "{\"text\":\"✅ Production deployment $VERSION successful\"}"
+  only:
+    - tags
+  needs:
+    - deploy:production
+
+# ============================================================================
+# Scheduled Jobs
+# ============================================================================
+
+database:backup:
+  stage: .pre
+  image: postgres:16-alpine
+  script:
+    - pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
+    - aws s3 cp backup-$(date +%Y%m%d).sql s3://soundcore-kcp-backups/
+  only:
+    - schedules
+  when: on_schedule
+
+security:scan:
+  stage: .pre
+  image: aquasec/trivy:latest
+  script:
+    - trivy image $DOCKER_IMAGE_PREFIX/frontend:latest
+    - trivy image $DOCKER_IMAGE_PREFIX/knowledge-service:latest
+  allow_failure: true
+  only:
+    - schedules
+  when: on_schedule

@@ -13,17 +13,17 @@ import React, { useState } from 'react';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
-export interface Column<T = any> {
+export interface Column<T = Record<string, unknown>> {
   key: string;
   title: string;
   dataIndex?: string;
   width?: number | string;
   align?: 'left' | 'center' | 'right';
   sortable?: boolean;
-  render?: (value: any, record: T, index: number) => React.ReactNode;
+  render?: (value: unknown, record: T, index: number) => React.ReactNode;
 }
 
-export interface TableProps<T = any> {
+export interface TableProps<T = Record<string, unknown>> {
   columns: Column<T>[];
   dataSource: T[];
   rowKey?: string | ((record: T) => string);
@@ -43,7 +43,7 @@ export interface PaginationConfig {
   onChange?: (page: number, pageSize: number) => void;
 }
 
-export interface RowSelectionConfig<T = any> {
+export interface RowSelectionConfig<T = Record<string, unknown>> {
   selectedRowKeys?: React.Key[];
   onChange?: (selectedRowKeys: React.Key[], selectedRows: T[]) => void;
 }
@@ -147,7 +147,7 @@ const Pagination: React.FC<PaginationConfig> = ({ current = 1, pageSize = 10, to
 // Main Table Component
 // ============================================================================
 
-export const Table = <T extends Record<string, any>>({
+export const Table = <T extends Record<string, unknown>>({
   columns,
   dataSource,
   rowKey = 'id',
@@ -165,7 +165,9 @@ export const Table = <T extends Record<string, any>>({
 
   const getRowKey = (record: T, index: number): React.Key => {
     if (typeof rowKey === 'function') return rowKey(record);
-    return record[rowKey] || index;
+    const key = record[rowKey];
+    if (typeof key === 'string' || typeof key === 'number') return key;
+    return index;
   };
 
   const handleSort = (columnKey: string) => {
@@ -179,14 +181,22 @@ export const Table = <T extends Record<string, any>>({
   };
 
   const sortedData = React.useMemo(() => {
+    // Handle undefined or invalid dataSource
+    if (!dataSource || !Array.isArray(dataSource)) return [];
     if (!sortColumn || !sortDirection) return dataSource;
-    
+
     const column = columns.find(col => col.key === sortColumn);
     if (!column) return dataSource;
-    
+
     const dataIndex = column.dataIndex || column.key;
     return [...dataSource].sort((a, b) => {
-      const comparison = a[dataIndex] > b[dataIndex] ? 1 : -1;
+      const aVal = a[dataIndex];
+      const bVal = b[dataIndex];
+      // Handle comparison for different types
+      if (aVal === bVal) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      const comparison = aVal > bVal ? 1 : -1;
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [dataSource, sortColumn, sortDirection, columns]);
@@ -248,7 +258,7 @@ export const Table = <T extends Record<string, any>>({
                     )}
                     {columns.map(col => {
                       const value = record[col.dataIndex || col.key];
-                      const content = col.render ? col.render(value, record, index) : value;
+                      const content = col.render ? col.render(value, record, index) : (value as React.ReactNode);
                       return (
                         <td key={col.key} className={`${cellPadding} text-gray-900 text-${col.align || 'left'}`}>
                           {content}

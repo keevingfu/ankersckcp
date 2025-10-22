@@ -17,7 +17,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Select, ContentPreview } from '@/components';
+import { Select } from '@/components';
 
 // ============================================================================
 // Types

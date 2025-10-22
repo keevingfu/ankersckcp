@@ -17,7 +17,7 @@ interface NavItem {
   badge?: number;
 }
 
-interface SidebarProps {
+export interface SidebarProps {
   collapsed?: boolean;
   onCollapse?: (collapsed: boolean) => void;
 }

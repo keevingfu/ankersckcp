@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
 import TopBar from '@/components/ui/TopBar';
 
-interface MainLayoutProps {
+export interface MainLayoutProps {
   children: React.ReactNode;
 }
 

@@ -31,6 +31,7 @@ const config: Config = {
         sans: typography.fontFamily.sans,
         mono: typography.fontFamily.mono,
       },
+      // @ts-expect-error - Tailwind fontSize type is too strict for our design system
       fontSize: {
         ...typography.fontSize,
       },

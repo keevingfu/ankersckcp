@@ -1,10 +1,21 @@
 import React from 'react';
 
+export type CardVariant = 'default' | 'hoverable' | 'bordered' | 'interactive';
+
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'hoverable' | 'bordered' | 'interactive';
+  variant?: CardVariant;
   padding?: 'none' | 'small' | 'medium' | 'large';
   shadow?: 'none' | 'sm' | 'md' | 'lg';
   selected?: boolean;
+}
+
+export interface StatCardProps {
+  title: string;
+  value: string | number;
+  change?: number;
+  icon?: React.ReactNode;
+  trend?: 'up' | 'down' | 'neutral';
+  description?: string;
 }
 
 export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -12,9 +23,9 @@ export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
 }
 
-export interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {}
+export type CardBodyProps = React.HTMLAttributes<HTMLDivElement>;
 
-export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {}
+export type CardFooterProps = React.HTMLAttributes<HTMLDivElement>;
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
@@ -117,6 +128,65 @@ const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
 );
 
 CardFooter.displayName = 'CardFooter';
+
+// StatCard Component for dashboard statistics
+export const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  change,
+  icon,
+  trend = 'neutral',
+  description,
+}) => {
+  const getTrendColor = () => {
+    if (trend === 'up') return 'text-green-600';
+    if (trend === 'down') return 'text-red-600';
+    return 'text-gray-600';
+  };
+
+  const getTrendIcon = () => {
+    if (trend === 'up') {
+      return (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        </svg>
+      );
+    }
+    if (trend === 'down') {
+      return (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Card variant="default" padding="medium">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-sm text-gray-600 mb-1">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+          {change !== undefined && (
+            <div className={`flex items-center gap-1 text-sm ${getTrendColor()}`}>
+              {getTrendIcon()}
+              <span className="font-medium">{Math.abs(change)}%</span>
+            </div>
+          )}
+          {description && (
+            <p className="text-xs text-gray-500 mt-2">{description}</p>
+          )}
+        </div>
+        {icon && (
+          <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            {icon}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
 
 export { Card, CardHeader, CardBody, CardFooter };
 export default Card;

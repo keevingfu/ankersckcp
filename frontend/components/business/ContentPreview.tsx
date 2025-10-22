@@ -13,6 +13,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 // ============================================================================
 // Types
@@ -166,7 +167,7 @@ const ContentPreviewSkeleton: React.FC = () => (
 // ============================================================================
 
 export const ContentPreview: React.FC<ContentPreviewProps> = ({
-  id,
+  id: _id,
   title,
   description,
   thumbnail,
@@ -209,10 +210,11 @@ export const ContentPreview: React.FC<ContentPreviewProps> = ({
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gray-100 overflow-hidden">
         {thumbnail ? (
-          <img
+          <Image
             src={thumbnail}
             alt={title}
-            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            fill
+            className="object-cover transition-transform group-hover:scale-105"
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-gray-400">

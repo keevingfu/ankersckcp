@@ -1,7 +1,7 @@
 /**
  * Analytics Dashboard Page
  * 数据分析仪表板页面
- * 
+ *
  * Features:
  * - Key metrics cards (KPIs)
  * - Time range selector (7d/30d/90d/custom)
@@ -16,21 +16,20 @@
 'use client';
 
 import React, { useState } from 'react';
+import { mutate } from 'swr';
 import { Table, Select } from '@/components';
 import {
-  TrendingUp,
-  TrendingDown,
   Users,
   FileText,
   MessageSquare,
   BarChart3,
   Download,
-  Calendar,
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
   Minus
 } from 'lucide-react';
+import { useAnalyticsOverview, useUserMetrics, useContentMetrics, useSearchMetrics } from '@/lib/swr';
 
 // ============================================================================
 // Types
@@ -54,7 +53,7 @@ interface ChartDataPoint {
   color?: string;
 }
 
-interface AnalyticsData {
+interface AnalyticsData extends Record<string, unknown> {
   date: string;
   users: number;
   sessions: number;
@@ -336,22 +335,88 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  // Fetch analytics data using SWR
+  const { data: overviewData, error: overviewError, isLoading: overviewLoading } = useAnalyticsOverview();
+  const { data: _userMetricsData } = useUserMetrics();
+  const { data: _contentMetricsData } = useContentMetrics();
+  const { data: _searchMetricsData } = useSearchMetrics();
+
+  const loading = overviewLoading;
+
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
+    try {
+      await Promise.all([
+        mutate('analytics-overview'),
+        mutate('user-metrics'),
+        mutate('content-metrics'),
+        mutate('search-metrics'),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleExport = () => {
-    console.log('Exporting data...');
     // TODO: Implement export functionality
+    alert('Export functionality coming soon!');
   };
 
+  // Transform API data to metrics cards
+  const metricsData: MetricCard[] = overviewData ? [
+    {
+      id: 'users',
+      title: '活跃用户',
+      value: overviewData.total_users?.toLocaleString() || '0',
+      change: 12.5, // TODO: Calculate from API data
+      trend: 'up',
+      icon: <Users className="w-6 h-6" />,
+      color: 'purple'
+    },
+    {
+      id: 'content',
+      title: '内容浏览量',
+      value: overviewData.content_views?.toLocaleString() || '0',
+      change: 8.3,
+      trend: 'up',
+      icon: <FileText className="w-6 h-6" />,
+      color: 'blue'
+    },
+    {
+      id: 'chat',
+      title: '对话次数',
+      value: overviewData.chat_sessions?.toLocaleString() || '0',
+      change: -3.2,
+      trend: 'down',
+      icon: <MessageSquare className="w-6 h-6" />,
+      color: 'green'
+    },
+    {
+      id: 'engagement',
+      title: '平均参与度',
+      value: `${overviewData.avg_engagement || 0}%`,
+      change: 0,
+      trend: 'neutral',
+      icon: <BarChart3 className="w-6 h-6" />,
+      color: 'orange'
+    }
+  ] : mockMetrics;
+
+  // Transform user metrics to trend data (using mock data for now as API doesn't return time series)
+  const trendData: ChartDataPoint[] = mockTrendData;
+
+  // Transform content metrics to category data (using mock data for now as API doesn't return category breakdown)
+  const categoryData: ChartDataPoint[] = mockCategoryData;
+
+  // Table data (mock for now, would need dedicated endpoint)
+  const tableData: AnalyticsData[] = mockTableData;
+
   const tableColumns = [
-    { key: 'date', label: '日期' },
-    { key: 'users', label: '用户数' },
-    { key: 'sessions', label: '会话数' },
-    { key: 'contentViews', label: '内容浏览' },
-    { key: 'chatMessages', label: '对话数' }
+    { key: 'date', title: '日期', dataIndex: 'date' },
+    { key: 'users', title: '用户数', dataIndex: 'users' },
+    { key: 'sessions', title: '会话数', dataIndex: 'sessions' },
+    { key: 'contentViews', title: '内容浏览', dataIndex: 'contentViews' },
+    { key: 'chatMessages', title: '对话数', dataIndex: 'chatMessages' }
   ];
 
   return (
@@ -363,7 +428,7 @@ export default function AnalyticsPage() {
             <h1 className="text-3xl font-bold text-gray-900">数据分析</h1>
             <p className="text-gray-600 mt-1">实时监控系统使用情况和趋势</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Time Range Selector */}
             <Select
@@ -375,19 +440,18 @@ export default function AnalyticsPage() {
                 { value: '90d', label: '最近90天' },
                 { value: 'custom', label: '自定义' }
               ]}
-              icon={<Calendar className="w-4 h-4" />}
             />
-            
+
             {/* Refresh Button */}
             <button
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || loading}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
               <span>刷新</span>
             </button>
-            
+
             {/* Export Button */}
             <button
               onClick={handleExport}
@@ -400,28 +464,66 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Error Alert */}
+      {overviewError && (
+        <div className="mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-red-800">加载分析数据失败</h3>
+                <p className="text-sm text-red-700 mt-1">{overviewError}</p>
+                <button
+                  onClick={handleRefresh}
+                  className="mt-3 text-sm text-red-700 hover:text-red-800 font-medium"
+                >
+                  重试
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && !overviewData && (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+            <p className="text-gray-600">加载分析数据...</p>
+          </div>
+        </div>
+      )}
+
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {mockMetrics.map((metric) => (
-          <MetricCardComponent key={metric.id} metric={metric} />
-        ))}
-      </div>
+      {!loading || overviewData ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {metricsData.map((metric) => (
+              <MetricCardComponent key={metric.id} metric={metric} />
+            ))}
+          </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <LineChart data={mockTrendData} title="用户活跃度趋势" />
-        <PieChart data={mockCategoryData} title="内容类型分布" />
-      </div>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <LineChart data={trendData} title="用户活跃度趋势" />
+            <PieChart data={categoryData} title="内容类型分布" />
+          </div>
 
-      {/* Data Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">详细数据</h3>
-        <Table
-          data={mockTableData}
-          columns={tableColumns}
-          variant="bordered"
-        />
-      </div>
+          {/* Data Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">详细数据</h3>
+            <Table
+              dataSource={tableData}
+              columns={tableColumns}
+            />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

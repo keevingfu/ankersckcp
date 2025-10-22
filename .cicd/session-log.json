@@ -1,0 +1,13 @@
+[
+  {
+    "session_id": "chat_20251015_215834",
+    "start_time": "2025-10-15T21:58:34.391286",
+    "resumed_from": {
+      "phase": "initialization",
+      "task": "component-library",
+      "status": "in-progress",
+      "lastCheckpoint": "cp002",
+      "lastSave": "2024-10-15T16:48:30Z"
+    }
+  }
+]

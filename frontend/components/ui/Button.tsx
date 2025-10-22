@@ -1,8 +1,11 @@
 import React from 'react';
 
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link';
+export type ButtonSize = 'small' | 'medium' | 'large';
+
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link';
-  size?: 'small' | 'medium' | 'large';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
@@ -25,31 +28,31 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // Base styles using design system
+    // Base styles using design system with touch optimization
     const baseStyles =
-      'inline-flex items-center justify-center font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2';
+      'inline-flex items-center justify-center font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 touch-manipulation';
 
-    // Variant styles using design system tokens
+    // Variant styles using design system tokens with touch feedback
     const variantStyles = {
       primary:
-        'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white focus:ring-primary-500 shadow-md hover:shadow-lg transition-all',
+        'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 active:scale-[0.97] text-white focus:ring-primary-500 shadow-md hover:shadow-lg transition-all duration-150',
       secondary:
-        'bg-secondary-100 hover:bg-secondary-200 active:bg-secondary-300 text-secondary-700 focus:ring-secondary-500 transition-all',
+        'bg-secondary-100 hover:bg-secondary-200 active:bg-secondary-300 active:scale-[0.97] text-secondary-700 focus:ring-secondary-500 transition-all duration-150',
       outline:
-        'border-2 border-primary-500 hover:border-primary-600 text-primary-700 hover:bg-primary-50 focus:ring-primary-500 transition-all',
+        'border-2 border-primary-500 hover:border-primary-600 text-primary-700 hover:bg-primary-50 active:scale-[0.97] focus:ring-primary-500 transition-all duration-150',
       ghost:
-        'text-primary-700 hover:bg-primary-50 active:bg-primary-100 focus:ring-primary-500 transition-all',
+        'text-primary-700 hover:bg-primary-50 active:bg-primary-100 active:scale-[0.95] focus:ring-primary-500 transition-all duration-150',
       danger:
-        'bg-error-500 hover:bg-error-600 active:bg-error-700 text-white focus:ring-error-500 shadow-md hover:shadow-lg transition-all',
+        'bg-error-500 hover:bg-error-600 active:bg-error-700 active:scale-[0.97] text-white focus:ring-error-500 shadow-md hover:shadow-lg transition-all duration-150',
       link:
-        'text-primary-700 underline hover:text-primary-900 focus:ring-primary-500 transition-colors',
+        'text-primary-700 underline hover:text-primary-900 active:scale-[0.98] focus:ring-primary-500 transition-all duration-150',
     };
 
-    // Size styles using design system spacing
+    // Size styles with minimum 44px touch target (WCAG/iOS/Android guidelines)
     const sizeStyles = {
-      small: 'h-8 px-3 text-sm rounded-md gap-1.5',
-      medium: 'h-10 px-4 text-base rounded-lg gap-2',
-      large: 'h-12 px-6 text-lg rounded-lg gap-2.5',
+      small: 'min-h-[44px] h-11 px-4 text-sm rounded-md gap-1.5',
+      medium: 'min-h-[44px] h-12 px-5 text-base rounded-lg gap-2',
+      large: 'min-h-[48px] h-14 px-7 text-lg rounded-lg gap-2.5',
     };
 
     // Width styles
